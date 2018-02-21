@@ -94,6 +94,7 @@ hs_err_pid*
 target/
 
 ### VisualStudioCode ###
+.vscode
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
