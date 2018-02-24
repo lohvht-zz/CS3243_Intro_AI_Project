@@ -58,8 +58,8 @@ class FeatureFunction {
 		features[INDEX_NUM_ROWS_REMOVED] = getRowsRemoved(nextState, nextState);
 		features[INDEX_AV_DIFF_COL_HEIGHT] = getMaxColHeight(nextState);
 		features[INDEX_AV_COL_HEIGHT] = getMaxColHeight(nextState);
-		features[INDEX_COL_TRANSITION] = getMaxColHeight(nextState);
-		features[INDEX_ROW_TRANSITION] = getMaxColHeight(nextState);
+		features[INDEX_COL_TRANSITION] = getRowTransitions(nextState);
+		features[INDEX_ROW_TRANSITION] = getColumnTransitions(nextState);
 		return features;
 	}
 
