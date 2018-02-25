@@ -1,10 +1,25 @@
+import java.util.Arrays;
 
 public class PlayerSkeleton {
+	FeatureFunction f = new FeatureFunction();
+	double[] weights = {1, 1, 1, 1, 1, 1, 1, 1, 1}; // weight vector of length NUM_FEATURES + 1
+	NState nextState = new NState();
 
 	//implement this function to have a working system
 	public int pickMove(State s, int[][] legalMoves) {
-		
-		return 0;
+		int bestMove = 0;
+		double maxValue = Double.NEGATIVE_INFINITY;
+		double currentValue = Double.NEGATIVE_INFINITY;
+		for(int move = 0; move < legalMoves.length; move++) {
+			nextState.copy(s);
+			nextState.makeMove(move);
+			currentValue = f.calculateValue(nextState, weights);
+			if(currentValue > maxValue) {
+				maxValue = currentValue;
+				bestMove = move;
+			}
+		}
+		return bestMove;
 	}
 	
 	public static void main(String[] args) {
@@ -26,18 +41,20 @@ public class PlayerSkeleton {
 	
 }
 
-// Helper Class to calculate features, with a given state/action
+// Helper Class to calculate the value function or Q function, with a given state/action
 class FeatureFunction {
-	public static final int NUM_FEATURES = 8;
+	private static int countFeatures = 0;
 	// Indexes of the feature array values
-	public static final int INDEX_MAX_COL_HEIGHT = 1;
-	public static final int INDEX_NUM_HOLES = 2;
-	public static final int INDEX_LANDING_HEIGHT = 3;
-	public static final int INDEX_NUM_ROWS_REMOVED = 4;
-	public static final int INDEX_AV_DIFF_COL_HEIGHT = 5;
-	public static final int INDEX_AV_COL_HEIGHT = 6;
-	public static final int INDEX_COL_TRANSITION = 7;
-	public static final int INDEX_ROW_TRANSITION = 8;
+	public static final int INDEX_MAX_COL_HEIGHT = countFeatures++;
+	public static final int INDEX_NUM_HOLES = countFeatures++;
+	public static final int INDEX_LANDING_HEIGHT = countFeatures++;
+	public static final int INDEX_NUM_ROWS_REMOVED = countFeatures++;
+	public static final int INDEX_AV_DIFF_COL_HEIGHT = countFeatures++;
+	public static final int INDEX_AV_COL_HEIGHT = countFeatures++;
+	public static final int INDEX_COL_TRANSITION = countFeatures++;
+	public static final int INDEX_ROW_TRANSITION = countFeatures++;
+
+	public static final int NUM_FEATURES = countFeatures;
 
 	/**
 	 * Helper function that computes all the features and returns it as a vector
@@ -122,6 +139,15 @@ class FeatureFunction {
 		// TODO: implement me!
 		return -1;
 	}
+
+	public double calculateValue(NState state, double[] weight) {
+		double values = 0;
+		double[] featureValues = getFeatureValues(state);
+		for (int i = 0; i < featureValues.length; i++) {
+			values += featureValues[i]*weight[i];
+		}
+		return values;
+	}
 }
 
 /**
@@ -136,7 +162,7 @@ class NState extends State {
 	//private variables from State
 	private int turn = 0;
 	private int cleared = 0;
-	private int[] top = new int[ROWS];
+	private int[] top = new int[COLS];
 	private int[][] field = new int[ROWS][COLS];
 	
 	// Index of move made from the legalMoves array: Must be set!
@@ -161,12 +187,11 @@ class NState extends State {
 		this.setTop(state.getTop());
 		// replace relevant protected/public variables
 		this.lost = state.lost;
-		this.nextPiece = state.nextPiece();
+		this.nextPiece = state.getNextPiece();
 		// currentAction set to -1 (not made a move yet)
 		currentAction = -1;
 		// Preserve the original state
 		this.oState = state;
-
 	}
 
 	private void setField(int[][] field) {
@@ -178,7 +203,7 @@ class NState extends State {
 	}
 
 	private void setTop(int[] top) {
-		for(int i=0; i<ROWS; i++) {
+		for(int i=0; i<COLS; i++) {
 			this.top[i] = top[i];
 		}
 	}
