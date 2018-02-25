@@ -68,7 +68,7 @@ class FeatureFunction {
 	 */
 	public double getMaxColHeight(State state) {
 		// TODO: Implement Me!
-		return -1;
+		return state.COLS;
 	}
 
 	/**
@@ -77,7 +77,17 @@ class FeatureFunction {
 	 */
 	public double getTotalNumberofHoles(State state) {
 		// TODO: Implement Me!
-		return -1;
+		int count = 0;
+		int[][] field = state.getField();
+		//-2 for the illegal and top legal row
+		for (int i=0; i<(state.ROWS-2);i++) {
+			for (int j=0; j<state.COLS; j++) {
+				if (field[i][j]<=0 && field[i+1][j]>0) {
+					count += 1;
+				}
+			}
+		}
+		return count;
 	}
 
 	/**
