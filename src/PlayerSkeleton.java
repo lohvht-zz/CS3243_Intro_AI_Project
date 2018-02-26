@@ -79,15 +79,26 @@ class FeatureFunction {
 
 	/**
 	 * The maximum column height of the board
+	 * @return      the row where the highest block of the highest column is found, -1 if empty
+	 * 
 	 */
 	public double getMaxColHeight(NState state) {
 		// TODO: Implement Me!
-		return state.COLS;
+		int[][] field = state.getField();
+		for (int i=state.ROWS-1;i>0;i--) {
+			for (int j=0; j<state.COLS; j++) {
+				if (field[i][j]>0) {
+					return i;
+				}
+			}
+		}
+		return -1;
 	}
 
 	/**
 	 * Total number of holes in the wall, the number of empty cells that has at
 	 * least one filled cell above it in the same column
+	 * @return      the number of holes in the wall
 	 */
 	public double getTotalNumberofHoles(NState state) {
 		// TODO: Implement Me!
