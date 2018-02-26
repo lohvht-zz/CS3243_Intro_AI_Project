@@ -58,9 +58,7 @@ class FeatureFunction {
 
 	/**
 	 * Helper function that computes all the features and returns it as a vector
-	 * @param nextState This is the next game state (NOTE victor@24/02/18: I
-	 * will implement a class that will extend State, which will add a helper
-	 * method to get the action as well, for now just go on an assumption that we pass in the action)
+	 * @param nextState This is the next game state
 	 * @return an array representing the vector of calculated feature values
 	 */
 	public double[] getFeatureValues(NState nextState) {
