@@ -1,4 +1,7 @@
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.stream.IntStream;
 
 public class PlayerSkeleton {
 	FeatureFunction f = new FeatureFunction();
@@ -79,20 +82,18 @@ class FeatureFunction {
 
 	/**
 	 * The maximum column height of the board
-	 * @return      the row where the highest block of the highest column is found, -1 if empty
-	 * 
+	 * @return      the highest row of the highest column is found, 0 if empty
 	 */
 	public double getMaxColHeight(NState state) {
 		// TODO: Implement Me!
-		int[][] field = state.getField();
-		for (int i=state.ROWS-1;i>0;i--) {
-			for (int j=0; j<state.COLS; j++) {
-				if (field[i][j]>0) {
-					return i;
-				}
-			}
-		}
-		return -1;
+		int[] top = state.getTop();
+		int max = top[0];
+		for(int i=1;i < top.length;i++){
+			if(top[i] > max){
+	    		max = top[i];
+	    	}
+		} 
+		return max;
 	}
 
 	/**
@@ -134,7 +135,7 @@ class FeatureFunction {
 	 */
 	public double getAverageDifferenceColumnHeight(NState state) {
 		// TODO: implement me!
-		return -1;
+		return IntStream.of(state.getTop()).sum()/state.COLS;
 	}
 
 	/**
