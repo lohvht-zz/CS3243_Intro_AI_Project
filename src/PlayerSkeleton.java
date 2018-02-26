@@ -135,7 +135,12 @@ class FeatureFunction {
 	 */
 	public double getAverageDifferenceColumnHeight(NState state) {
 		// TODO: implement me!
-		return IntStream.of(state.getTop()).sum()/state.COLS;
+		int[] top = state.getTop();
+		double total = 0.0;
+		for (int i=0; i<top.length-1; i++) {
+			total += (double) Math.abs(top[i]-top[i+1]);
+		}
+		return total/((double)(state.COLS-1));
 	}
 
 	/**
@@ -143,7 +148,7 @@ class FeatureFunction {
 	 */
 	public double getAverageColumnHeight(NState state) {
 		// TODO: implement me!
-		return -1;
+		return IntStream.of(state.getTop()).sum()/state.COLS;
 	}
 
 	/**
@@ -152,7 +157,16 @@ class FeatureFunction {
 	 */
 	public double getRowTransitions(NState state) {
 		// TODO: implement me!
-		return -1;
+		int count = 0;
+		int[][] field = state.getField();
+		for (int i=0; i<(state.ROWS-1);i++) {
+			for (int j=0; j<state.COLS; j++) {
+				if (field[i][j]<=0 && field[i][j+1]>0) {
+					count += 1;
+				}
+			}
+		}
+		return count;
 	}
 
 	public double getColumnTransitions(NState state) {
