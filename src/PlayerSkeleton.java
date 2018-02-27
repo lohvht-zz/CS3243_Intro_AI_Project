@@ -5,23 +5,38 @@ import java.util.stream.IntStream;
 
 public class PlayerSkeleton {
 	FeatureFunction f = new FeatureFunction();
-	double[] weights = {1, 1, 1, 1, 1, 1, 1, 1, 1}; // weight vector of length NUM_FEATURES + 1
-	NState nextState = new NState();
+
+
+	double[] weights = {
+		0.375436867970272,
+		0.7925442710411554,
+		0.40162002789633044,
+		0.3312561769239417,
+		0.8661011224368202,
+		0.6498664140640098,
+		0.8090459288058522,
+		0.007873808594357268,
+	};
 
 	//implement this function to have a working system
 	public int pickMove(State s, int[][] legalMoves) {
 		int bestMove = 0;
-		double maxValue = Double.NEGATIVE_INFINITY;
-		double currentValue = Double.NEGATIVE_INFINITY;
+		double maxValue = -Double.MAX_VALUE;
+		double currentValue = -Double.MAX_VALUE;
+
+		NState nextState = new NState();
+
 		for(int move = 0; move < legalMoves.length; move++) {
 			nextState.copy(s);
 			nextState.makeMove(move);
 			currentValue = f.calculateValue(nextState, weights);
+			// System.out.printf("state turn %d, next state turn %d, move %d, value %f\n", s.getTurnNumber(), nextState.getTurnNumber(), move, currentValue);
 			if(currentValue > maxValue) {
 				maxValue = currentValue;
 				bestMove = move;
 			}
 		}
+		System.out.printf("Best Move: %d\n", bestMove);
 		return bestMove;
 	}
 	
@@ -49,11 +64,11 @@ class FeatureFunction {
 	private static int countFeatures = 0;
 	// Indexes of the feature array values
 	public static final int INDEX_MAX_COL_HEIGHT = countFeatures++;
-	public static final int INDEX_NUM_HOLES = countFeatures++;
 	public static final int INDEX_LANDING_HEIGHT = countFeatures++;
 	public static final int INDEX_NUM_ROWS_REMOVED = countFeatures++;
 	public static final int INDEX_AV_DIFF_COL_HEIGHT = countFeatures++;
 	public static final int INDEX_AV_COL_HEIGHT = countFeatures++;
+	public static final int INDEX_NUM_HOLES = countFeatures++;
 	public static final int INDEX_COL_TRANSITION = countFeatures++;
 	public static final int INDEX_ROW_TRANSITION = countFeatures++;
 
@@ -65,18 +80,17 @@ class FeatureFunction {
 	 * @return an array representing the vector of calculated feature values
 	 */
 	public double[] getFeatureValues(NState nextState) {
-		double[] features = new double[NUM_FEATURES+1];
-		// A Bias to the linear vector, may help in learning
-		features[0] = 1;
+		double[] features = new double[NUM_FEATURES];
 		// The rest of the feature vector
 		features[INDEX_MAX_COL_HEIGHT] = getMaxColHeight(nextState);
-		features[INDEX_NUM_HOLES] = getTotalNumberofHoles(nextState);
 		features[INDEX_LANDING_HEIGHT] = getLandingHeight(nextState);
 		features[INDEX_NUM_ROWS_REMOVED] = getRowsRemoved(nextState);
-		features[INDEX_AV_DIFF_COL_HEIGHT] = getMaxColHeight(nextState);
-		features[INDEX_AV_COL_HEIGHT] = getMaxColHeight(nextState);
-		features[INDEX_COL_TRANSITION] = getRowTransitions(nextState);
-		features[INDEX_ROW_TRANSITION] = getColumnTransitions(nextState);
+		features[INDEX_AV_DIFF_COL_HEIGHT] = getAverageDifferenceColumnHeight(nextState);
+		features[INDEX_AV_COL_HEIGHT] = getAverageColumnHeight(nextState);
+		double[] holesTransitions = getHolesTransitions(nextState);
+		features[INDEX_NUM_HOLES] = holesTransitions[0];
+		features[INDEX_COL_TRANSITION] = holesTransitions[1];
+		features[INDEX_ROW_TRANSITION] = holesTransitions[2];
 		return features;
 	}
 
@@ -94,26 +108,6 @@ class FeatureFunction {
 	    	}
 		} 
 		return max;
-	}
-
-	/**
-	 * Total number of holes in the wall, the number of empty cells that has at
-	 * least one filled cell above it in the same column
-	 * @return      the number of holes in the wall
-	 */
-	public double getTotalNumberofHoles(NState state) {
-		// TODO: Implement Me!
-		int count = 0;
-		int[][] field = state.getField();
-		//-2 for the illegal and top legal row
-		for (int i=0; i<(state.ROWS-2);i++) {
-			for (int j=0; j<state.COLS; j++) {
-				if (field[i][j]<=0 && field[i+1][j]>0) {
-					count += 1;
-				}
-			}
-		}
-		return count;
 	}
 
 	/**
@@ -152,26 +146,40 @@ class FeatureFunction {
 	}
 
 	/**
-	 * The total number of row transitions. Row transitions are when an empty cell
-	 * is adjacent to a filled cell on the same row.
+	 * For the following Features:
+	 * Holes:
+	 * 		number of empty cells that has at least one filled cell above
+	 * 		it in the same column
+	 * Row Transitions:
+	 * 		number of filled gaps where the adjacent cell is empty along the same
+	 * 		row, we count the side borders as a filled gap as well
+	 * Column Transitions:
+	 * 		number of filled gaps where the adjacent cell is empty along the same
+	 * 		column
+	 * @return	An array that has the calculated number of holes, row transitions,
+	 * 			and column transitions of the form {HOLES, COL_TRANSITIONS, ROW_TRANSITIONS }
 	 */
-	public double getRowTransitions(NState state) {
-		// TODO: implement me!
-		int count = 0;
-		int[][] field = state.getField();
-		for (int i=0; i<(state.ROWS-1);i++) {
-			for (int j=0; j<state.COLS; j++) {
-				if (field[i][j]<=0 && field[i][j+1]>0) {
-					count += 1;
-				}
-			}
-		}
-		return count;
-	}
+	public double[] getHolesTransitions(NState state) {
+		int rowTransitions = 0;
+		int colTransitions = 0;
+		int holes = 0;
 
-	public double getColumnTransitions(NState state) {
-		// TODO: implement me!
-		return -1;
+		int[][] field = state.getField();
+		for(int i=0; i < State.ROWS - 1; i++) {
+			// If cell next to the border on the right side is empty
+			// we count that as a row transition
+			if(field[i][0] == 0) { rowTransitions++; }
+			// If cell next to the border on the left side is empty
+			// we count that as a row transition
+			if(field[i][State.COLS-1] == 0) { rowTransitions++; }
+			for(int j=0; j<State.COLS; j++) {
+				if(j > 0 && ((field[i][j] == 0) != (field[i][j-1] == 0))){ rowTransitions++; }
+				if((field[i][j] != 0) != (field[i+1][j] != 0)) { colTransitions++; }
+				if (field[i][j] <= 0 && field[i + 1][j] > 0) { holes++; }
+		}
+	}
+		double[] result = { holes, colTransitions, rowTransitions };
+		return result;
 	}
 
 	public double calculateValue(NState state, double[] weight) {
@@ -193,7 +201,6 @@ class NState extends State {
 	private static final int[][][] pTop = State.getpTop();
 
 	private State oState;
-	//private variables from State
 	private int turn = 0;
 	private int cleared = 0;
 	private int[] top = new int[COLS];
@@ -206,64 +213,71 @@ class NState extends State {
 	 * Default Constructor
 	 */
 	public NState(){
-		super();
+		this.turn = 0;
+		this.cleared = 0;
+		this.field = new int[ROWS][COLS];
+		this.top = new int[COLS];
+
+		this.lost = false;
 	};
 
-	public NState(State state) {
-		this.copy(state);
-	}
-
 	public void copy(State state) {
-		// Copy all relevant private members to this new state
-		this.turn = state.getTurnNumber();
-		this.cleared = state.getRowsCleared();
-		this.setField(state.getField());
-		this.setTop(state.getTop());
-		// replace relevant protected/public variables
-		this.lost = state.lost;
-		this.nextPiece = state.getNextPiece();
-		// currentAction set to -1 (not made a move yet)
-		currentAction = -1;
 		// Preserve the original state
-		this.oState = state;
+		this.setOState(state);
+		// Copy all relevant private members to this new state
+		this.setTurnNumber(this.oState.getTurnNumber());;
+		this.setRowsCleared(this.oState.getRowsCleared());
+		this.setField(this.oState.getField());
+		this.setTop(this.oState.getTop());
+		// replace relevant protected/public variables
+		this.lost = this.oState.lost;
+		this.setNextPiece(this.oState.getNextPiece());
+		// currentAction set to -1 (not made a move yet)
+		this.setCurrentAction(-1);
 	}
 
-	private void setField(int[][] field) {
+	public State getOState() { return this.oState; }
+	public void setOState(State _state) { this.oState = _state; }
+
+	public int getTurnNumber() { return this.turn; }
+	public void setTurnNumber(int _turn) { this.turn = _turn; }
+
+	public int getRowsCleared() { return this.cleared; }
+	public void setRowsCleared(int _cleared) { this.cleared = _cleared; }
+
+	public int[] getTop() { return this.top; }
+	public void setTop(int[] _top) {
+		for (int i = 0; i < COLS; i++) {
+			this.top[i] = _top[i];
+		}
+	}
+
+	public int[][] getField(){ return this.field; }
+	public void setField(int[][] _field) {
 		for(int i=0; i<ROWS; i++) {
 			for(int j=0; j<COLS; j++) {
-				this.field[i][j] = field[i][j];
+				this.field[i][j] = _field[i][j];
 			}
 		}
 	}
 
-	private void setTop(int[] top) {
-		for(int i=0; i<COLS; i++) {
-			this.top[i] = top[i];
-		}
-	}
+	public int getCurrentAction() { return this.currentAction; }
+	public void setCurrentAction(int _currentAction) { this.currentAction = _currentAction; }
 
-	public State getOState() {
-		return this.oState;
-	}
+	public int getNextPiece() { return this.nextPiece; }
+	public void setNextPiece(int _nextPiece) { this.nextPiece = _nextPiece; }
 
-	public int getCurrentAction() {
-		return this.currentAction;
-	}
-
-	public int getRowsCleared() {
-		return this.cleared;
-	}
+	public boolean hasLost() { return lost; }
 
 	//make a move based on the move index - its order in the legalMoves list
 	public void makeMove(int move) {
-		currentAction = move;
+		this.setCurrentAction(move);
 		makeMove(legalMoves[nextPiece][move]);
 	}
 
 	//returns false if you lose - true otherwise
 	public boolean makeMove(int orient, int slot) {
 		turn++;
-		//height if the first column makes contact
 		int height = top[slot] - pBottom[nextPiece][orient][0];
 		//for each column beyond the first in the piece
 		for (int c = 1; c < pWidth[nextPiece][orient]; c++) {
