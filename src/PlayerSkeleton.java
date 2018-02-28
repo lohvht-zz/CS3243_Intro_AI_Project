@@ -1,42 +1,33 @@
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.stream.IntStream;
+
+import org.w3c.dom.css.Counter;
+
+import java.util.Arrays;
+import java.util.Random;
 
 public class PlayerSkeleton {
 	FeatureFunction f = new FeatureFunction();
-
-
 	double[] weights = {
-		0.375436867970272,
-		0.7925442710411554,
-		0.40162002789633044,
-		0.3312561769239417,
-		0.8661011224368202,
-		0.6498664140640098,
-		0.8090459288058522,
-		0.007873808594357268,
+			1.982963276321388E-5, 1.1071800975126921E-7, 3.0996457506140976E-4, -2.52163738556298E-5, 4.450032757338146E-5, -6.323160558657387E-6, -8.81422807771626E-6, -6.781594693912656E-6, 5.899508205258744E-7,
 	};
+	NState nextState = new NState();
 
 	//implement this function to have a working system
 	public int pickMove(State s, int[][] legalMoves) {
 		int bestMove = 0;
 		double maxValue = -Double.MAX_VALUE;
 		double currentValue = -Double.MAX_VALUE;
-
-		NState nextState = new NState();
-
 		for(int move = 0; move < legalMoves.length; move++) {
 			nextState.copy(s);
 			nextState.makeMove(move);
-			currentValue = f.calculateValue(nextState, weights);
+			double[] featureValues = f.getFeatureValues(nextState);
+			currentValue = f.calculateValue(featureValues, weights);
 			// System.out.printf("state turn %d, next state turn %d, move %d, value %f\n", s.getTurnNumber(), nextState.getTurnNumber(), move, currentValue);
 			if(currentValue > maxValue) {
 				maxValue = currentValue;
 				bestMove = move;
 			}
 		}
-		System.out.printf("Best Move: %d\n", bestMove);
 		return bestMove;
 	}
 	
@@ -49,14 +40,14 @@ public class PlayerSkeleton {
 			s.draw();
 			s.drawNext(0,0);
 			try {
-				Thread.sleep(300);
+				// Thread.sleep(300); Uncomment to switch back to normal
+				Thread.sleep(0);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
 		}
 		System.out.println("You have completed "+s.getRowsCleared()+" rows.");
 	}
-	
 }
 
 // Helper Class to calculate the value function or Q function, with a given state/action
@@ -71,6 +62,7 @@ class FeatureFunction {
 	public static final int INDEX_NUM_HOLES = countFeatures++;
 	public static final int INDEX_COL_TRANSITION = countFeatures++;
 	public static final int INDEX_ROW_TRANSITION = countFeatures++;
+	public static final int INDEX_TOTAL_WELL_DEPTH = countFeatures++;
 
 	public static final int NUM_FEATURES = countFeatures;
 
@@ -91,6 +83,7 @@ class FeatureFunction {
 		features[INDEX_NUM_HOLES] = holesTransitions[0];
 		features[INDEX_COL_TRANSITION] = holesTransitions[1];
 		features[INDEX_ROW_TRANSITION] = holesTransitions[2];
+		features[INDEX_TOTAL_WELL_DEPTH] = getWellDepths(nextState);
 		return features;
 	}
 
@@ -115,8 +108,12 @@ class FeatureFunction {
 	 * the piece / 2))
 	 */
 	public double getLandingHeight(NState state) {
-		// TODO: Implement Me!
-		return -1;
+		int action = state.getCurrentAction();
+		int piece = state.getNextPiece();
+		int orient = state.legalMoves()[action][State.ORIENT];
+		int slot = state.legalMoves()[action][State.SLOT];
+
+		return state.getTop()[slot] + State.getpHeight()[piece][orient] / 2.0;
 	}
 
 	public double getRowsRemoved(NState nextState) {
@@ -182,9 +179,25 @@ class FeatureFunction {
 		return result;
 	}
 
-	public double calculateValue(NState state, double[] weight) {
+	public double getWellDepths(NState state) {
+		int[] top = state.getTop();
+
+		double totalSum = 0;
+
+		for(int i = 0; i < State.COLS; i++) {
+			int left = i == 0 ? State.ROWS : top[i-1];
+			int right = i == State.COLS -1 ? State.ROWS : top[i+1];
+			// Take the shorter of
+			int wellDepth = Math.min(left, right) - top[i];
+			if(wellDepth > 0) {
+				totalSum += (wellDepth * (wellDepth+1))/2;
+			}
+		}
+		return totalSum;
+	}
+
+	public double calculateValue(double[] featureValues, double[] weight) {
 		double values = 0;
-		double[] featureValues = getFeatureValues(state);
 		for (int i = 0; i < featureValues.length; i++) {
 			values += featureValues[i]*weight[i];
 		}
@@ -330,5 +343,294 @@ class NState extends State {
 			}
 		}
 		return true;
+	}
+}
+
+class Player {
+	FeatureFunction f = new FeatureFunction();
+	double[] weights = new double[FeatureFunction.NUM_FEATURES];
+	Random rand = new Random();
+	// double[] weights = {
+	// 	0.01312372243109472,
+	// 	-0.990979431758106,
+	// 	-0.02128292106473606,
+	// 	-0.022732603091860426,
+	// 	0.015024981557833383,
+	// 	-0.08072804804837652,
+	// 	0.023073229188750266,
+	// 	-0.015957721520064583,
+	// };
+	NState nextState = new NState();
+	/**
+	 * current and successor features, in 1xk vectors (DO REMEMBER TO TRANSPOSE)
+	 */
+	public double[][] currentFeature = new double[1][FeatureFunction.NUM_FEATURES];
+	public double[][] successorFeature = new double[1][FeatureFunction.NUM_FEATURES];
+	//implement this function to have a working system
+	public int pickMove(State s, int[][] legalMoves, LearnerLSPI learner) {
+		int bestMove = 0;
+		double maxValue = -Double.MAX_VALUE;
+		double currentValue = -Double.MAX_VALUE;
+
+		for(int move = 0; move < legalMoves.length; move++) {
+			nextState.copy(s);
+			nextState.makeMove(move);
+			double[] featureValues = f.getFeatureValues(nextState);
+			// System.out.println(Arrays.toString(featureValues));
+			currentValue = f.calculateValue(featureValues, weights);
+			if(currentValue > maxValue) {
+				maxValue = currentValue;
+				bestMove = move;
+				// System.out.println("Old Val: " + Arrays.toString(successorFeature[0]));
+				System.arraycopy(featureValues, 0, successorFeature[0], 0, featureValues.length);
+				// System.out.println("New Val: "+Arrays.toString(successorFeature[0]));
+				learner.LSTDQUpdate(currentFeature, successorFeature, nextState);
+			}
+			double[] tmp = successorFeature[0];
+			successorFeature[0] = currentFeature[0];
+			currentFeature[0] = tmp;
+		}
+		return bestMove;
+	}
+
+	Player() {
+		this.rand = new Random();
+		// Random Weights
+		this.weights = new double[FeatureFunction.NUM_FEATURES];
+		for(int i = 0; i < weights.length; i++) {
+			this.weights[i] = this.rand.nextDouble();
+		}
+	}
+
+	public static void playGame(LearnerLSPI learner) {
+		State s = new State();
+		Player p = new Player();
+		while(!s.hasLost()) {
+			s.makeMove(p.pickMove(s,s.legalMoves(), learner));
+		}
+		// System.out.println("You have completed "+s.getRowsCleared()+" rows.");
+	}
+	
+	public static void main(String[] args) {
+		int count = 0;
+		LearnerLSPI learner = new LearnerLSPI();
+		int NUM_GAMES = 1000000;
+		while(count < NUM_GAMES) {
+			playGame(learner);
+			count++;
+			if(count%1000 == 0) {
+				System.out.printf("Game %d of %d, %f through\n", count, NUM_GAMES, (double)count/NUM_GAMES*100);
+			}
+		}
+		// LearnerLSPI.prettyPrintMatrix(learner.A);
+		// LearnerLSPI.prettyPrintMatrix(learner.b);
+		double[] weightUpdated = learner.getWeight();
+		System.out.println("New weights: " + Arrays.toString(weightUpdated));
+		// LearnerLSPI.prettyPrintMatrix(learner.A);
+	}
+}
+
+class LearnerLSPI {
+	/**
+	 * Running using LSTDQ, where we can find the weight vector using
+	 * w = inv(A) * b
+	 * A is a kxk matrix of the following form, at each step:
+	 * A := A + currentFeatures*transpose(currentFeatures - DISCOUNT*successorFeatures)
+	 * 
+	 * And b is a kx1 vector of the following form, at each step:
+	 * b := b + currentFeatures*currentReward
+	 * 
+	 * where currentFeatures, successorFeatures are kx1 vectors representing the feature array
+	 */
+	public static double DISCOUNT = 0.96f;
+	
+	public double[][] A = new double[FeatureFunction.NUM_FEATURES][FeatureFunction.NUM_FEATURES];
+	public double[][] stepA = new double[FeatureFunction.NUM_FEATURES][FeatureFunction.NUM_FEATURES];
+	public double[][] b = new double[FeatureFunction.NUM_FEATURES][1];
+
+	/**
+	 * currentFeature and successFeature passed in are both 1xk vectors
+	 */
+	public void LSTDQUpdate(double[][] currentFeature, double[][] successorFeature, NState state) {
+		double[][] featureDiff = matrixSum(currentFeature, scalarMultiply(successorFeature, -1*DISCOUNT), false, false);
+		// calculate currentFeature*transpose(currentFeatures - DISCOUNT*successorFeatures)
+		matrixMultiply(currentFeature, featureDiff, stepA, true, false);
+		A = matrixSum(A, stepA, false, false);
+		int reward = state.getRowsCleared() - state.getOState().getRowsCleared();
+		// prettyPrintMatrix(b);
+		b = matrixSum(b, scalarMultiply(currentFeature, (double)reward), false, true);	
+	}
+
+	public double[] getWeight() {
+		double[][] weightsVector = new double[FeatureFunction.NUM_FEATURES][1];
+		matrixMultiply(invert(A), b, weightsVector, false, false);
+		double[] weights = new double[FeatureFunction.NUM_FEATURES];
+		for(int i = 0; i < FeatureFunction.NUM_FEATURES; i++) {
+			weights[i] = weightsVector[i][0];
+		}
+		return weights;
+	}
+
+	public static void prettyPrintMatrix(double[][] matrix) {
+		System.out.println("=======================");
+		for(int i = 0; i < matrix.length; i++) {
+			System.out.println(Arrays.toString(matrix[i]));
+		}
+		System.out.println("=======================");
+	}
+
+	/**
+	 * Multiply matrix1 (NxM) and matrix2 (MxK), where the result is stored in
+	 * the provided resultMatrix of size (NxK)
+	 * @param matrix1 	left matrix
+	 * @param matrix2	right matrix
+	 * @param resultMatrix	Resultant Matrix, will be returned
+	 * @param transposeMatrix1	if True, transpose matrix1
+	 * @param transposeMatrix2	if True, transpose matrix2
+	 */
+	public static double[][] matrixMultiply(double[][] matrix1, double[][] matrix2, double[][] resultMatrix, boolean transposeMatrix1, boolean transposeMatrix2) {
+		//Transposing is just swapping col and row indexes
+		int m1Row = (!transposeMatrix1) ? matrix1.length : matrix1[0].length;
+		int m1Col = (!transposeMatrix1) ? matrix1[0].length :matrix1.length;
+		int m2Row = (!transposeMatrix2) ? matrix2.length : matrix2[0].length;
+		int m2Col = (!transposeMatrix2) ? matrix2[0].length : matrix2.length;
+		int rmRow = resultMatrix.length;
+		int rmCol = resultMatrix[0].length;
+
+		double c1 = -1;
+		double c2 = -1;
+
+		if(m1Col != m2Row) {
+			return null;
+		} else if (rmRow != m1Row || rmCol != m2Col) {
+			return null;
+		}
+
+		for (int i = 0; i < rmRow; i++) {
+			for (int j = 0; j < rmCol; j++) {
+				resultMatrix[i][j] = 0;
+				for (int k = 0; k < m1Col; k++) {
+					c1 = (!transposeMatrix1) ? matrix1[i][k] : matrix1[k][i];
+					c2 = (!transposeMatrix2) ? matrix2[k][j] : matrix2[j][k];
+					resultMatrix[i][j] += c1 * c2;
+				}
+			}
+		}
+		return resultMatrix;
+	}
+
+	public static double[][] matrixSum(double[][] matrix1, double[][] matrix2, boolean transposeMatrix1, boolean transposeMatrix2) {
+		//Transposing is just swapping col and row indexes
+		int m1Row = (!transposeMatrix1) ? matrix1.length : matrix1[0].length;
+		int m1Col = (!transposeMatrix1) ? matrix1[0].length : matrix1.length;
+		int m2Row = (!transposeMatrix2) ? matrix2.length : matrix2[0].length;
+		int m2Col = (!transposeMatrix2) ? matrix2[0].length : matrix2.length;
+
+		double c1 = -1;
+		double c2 = -1;
+
+		if((m1Row != m2Row) || (m1Col != m2Col)) {
+			return null;
+		}
+		double[][] resultMatrix = new double[m1Row][m1Col];
+
+		for(int i = 0; i < m1Row; i++) {
+			for(int j = 0; j < m1Col; j++) {
+				c1 = (!transposeMatrix1) ? matrix1[i][j] : matrix1[j][i];
+				c2 = (!transposeMatrix2) ? matrix2[i][j] : matrix2[j][i];
+				resultMatrix[i][j] = c1 + c2;
+			}
+		}
+		return resultMatrix;
+	}
+
+	public static double[][] scalarMultiply(double[][] matrix, double scalar) {
+		double[][] result = new double[matrix.length][matrix[0].length];
+		for (int i = 0; i < matrix.length; i++) {
+			for (int j = 0; j < matrix[0].length; j++) {
+				result[i][j] = matrix[i][j] * scalar;
+			}
+		}
+		return result;
+	}
+
+	public static double[][] invert(double a[][]) {
+		int n = a.length;
+		double x[][] = new double[n][n];
+		double b[][] = new double[n][n];
+		int index[] = new int[n];
+		for (int i = 0; i < n; ++i)
+			b[i][i] = 1;
+
+		// Transform the matrix into an upper triangle
+		gaussian(a, index);
+
+		// Update the matrix b[i][j] with the ratios stored
+		for (int i = 0; i < n - 1; ++i)
+			for (int j = i + 1; j < n; ++j)
+				for (int k = 0; k < n; ++k)
+					b[index[j]][k] -= a[index[j]][i] * b[index[i]][k];
+
+		// Perform backward substitutions
+		for (int i = 0; i < n; ++i) {
+			x[n - 1][i] = b[index[n - 1]][i] / a[index[n - 1]][n - 1];
+			for (int j = n - 2; j >= 0; --j) {
+				x[j][i] = b[index[j]][i];
+				for (int k = j + 1; k < n; ++k) {
+					x[j][i] -= a[index[j]][k] * x[k][i];
+				}
+				x[j][i] /= a[index[j]][j];
+			}
+		}
+		return x;
+	}
+
+	public static void gaussian(double a[][], int index[]) {
+		int n = index.length;
+		double c[] = new double[n];
+
+		// Initialize the index
+		for (int i = 0; i < n; ++i)
+			index[i] = i;
+
+		// Find the rescaling factors, one from each row
+		for (int i = 0; i < n; ++i) {
+			double c1 = 0;
+			for (int j = 0; j < n; ++j) {
+				double c0 = Math.abs(a[i][j]);
+				if (c0 > c1)
+					c1 = c0;
+			}
+			c[i] = c1;
+		}
+
+		// Search the pivoting element from each column
+		int k = 0;
+		for (int j = 0; j < n - 1; ++j) {
+			double pi1 = 0;
+			for (int i = j; i < n; ++i) {
+				double pi0 = Math.abs(a[index[i]][j]);
+				pi0 /= c[index[i]];
+				if (pi0 > pi1) {
+					pi1 = pi0;
+					k = i;
+				}
+			}
+
+			// Interchange rows according to the pivoting order
+			int itmp = index[j];
+			index[j] = index[k];
+			index[k] = itmp;
+			for (int i = j + 1; i < n; ++i) {
+				double pj = a[index[i]][j] / a[index[j]][j];
+
+				// Record pivoting ratios below the diagonal
+				a[index[i]][j] = pj;
+
+				// Modify other elements accordingly
+				for (int l = j + 1; l < n; ++l)
+					a[index[i]][l] -= pj * a[index[j]][l];
+			}
+		}
 	}
 }
