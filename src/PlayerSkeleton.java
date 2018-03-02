@@ -5,15 +5,20 @@ public class PlayerSkeleton {
 
 
 	double[] weights = {
-		0.375436867970272,
-		0.7925442710411554,
-		0.40162002789633044,
-		0.3312561769239417,
-		0.8661011224368202,
-		0.6498664140640098,
-		0.8090459288058522,
-		0.007873808594357268,
+		-4.500158825082766,
+		4.500158825082766,
+		-4.500158825082766,
+		-3.4181268101392694,
+		-2.52163738556298,
+		8.450032757338146E-5,
+		-7.899265427351652,
+		-3.2178882868487753,
+		-9.348695305445199,
+		-9.348695305445199,
+		-3.3855972247263626,
 	};
+	NState nextState = new NState();
+	double[] featureValues = null;
 
 	//implement this function to have a working system
 	public int pickMove(State s, int[][] legalMoves) {
@@ -21,19 +26,16 @@ public class PlayerSkeleton {
 		double maxValue = -Double.MAX_VALUE;
 		double currentValue = -Double.MAX_VALUE;
 
-		NState nextState = new NState();
-
 		for(int move = 0; move < legalMoves.length; move++) {
 			nextState.copy(s);
 			nextState.makeMove(move);
-			currentValue = f.calculateValue(nextState, weights);
-			// System.out.printf("state turn %d, next state turn %d, move %d, value %f\n", s.getTurnNumber(), nextState.getTurnNumber(), move, currentValue);
+			featureValues = f.getFeatureValues(nextState);
+			currentValue = f.calculateValue(featureValues, weights);
 			if(currentValue > maxValue) {
 				maxValue = currentValue;
 				bestMove = move;
 			}
 		}
-		System.out.printf("Best Move: %d\n", bestMove);
 		return bestMove;
 	}
 	
@@ -46,7 +48,8 @@ public class PlayerSkeleton {
 			s.draw();
 			s.drawNext(0,0);
 			try {
-				Thread.sleep(300);
+				// Thread.sleep(300); // Uncomment this to revert to normal sleep 300
+				Thread.sleep(0);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
@@ -60,14 +63,17 @@ public class PlayerSkeleton {
 class FeatureFunction {
 	private static int countFeatures = 0;
 	// Indexes of the feature array values
-	public static final int INDEX_MAX_COL_HEIGHT = countFeatures++;
+	public static final int INDEX_MAX_HEIGHT = countFeatures++;
+	public static final int INDEX_MIN_HEIGHT = countFeatures++;
+	public static final int INDEX_AV_HEIGHT = countFeatures++;
+	public static final int INDEX_AV_DIFF_HEIGHT = countFeatures++;
 	public static final int INDEX_LANDING_HEIGHT = countFeatures++;
 	public static final int INDEX_NUM_ROWS_REMOVED = countFeatures++;
-	public static final int INDEX_AV_DIFF_COL_HEIGHT = countFeatures++;
-	public static final int INDEX_AV_COL_HEIGHT = countFeatures++;
 	public static final int INDEX_NUM_HOLES = countFeatures++;
 	public static final int INDEX_COL_TRANSITION = countFeatures++;
 	public static final int INDEX_ROW_TRANSITION = countFeatures++;
+	public static final int INDEX_COVERED_GAPS = countFeatures++;
+	public static final int INDEX_TOTAL_WELL_DEPTH = countFeatures++;
 
 	public static final int NUM_FEATURES = countFeatures;
 
@@ -79,32 +85,48 @@ class FeatureFunction {
 	public double[] getFeatureValues(NState nextState) {
 		double[] features = new double[NUM_FEATURES];
 		// The rest of the feature vector
-		features[INDEX_MAX_COL_HEIGHT] = getMaxColHeight(nextState);
+		double[] columnFeatures = getColumnFeatures(nextState);
+		features[INDEX_MAX_HEIGHT] = columnFeatures[0];
+		features[INDEX_MIN_HEIGHT] = columnFeatures[1];
+		features[INDEX_AV_HEIGHT] = columnFeatures[2];
+		features[INDEX_AV_DIFF_HEIGHT] = columnFeatures[3];
 		features[INDEX_LANDING_HEIGHT] = getLandingHeight(nextState);
 		features[INDEX_NUM_ROWS_REMOVED] = getRowsRemoved(nextState);
-		features[INDEX_AV_DIFF_COL_HEIGHT] = getAverageDifferenceColumnHeight(nextState);
-		features[INDEX_AV_COL_HEIGHT] = getAverageColumnHeight(nextState);
-		double[] holesTransitions = getHolesTransitions(nextState);
+		double[] holesTransitions = getHolesTransitionsCoveredGaps(nextState);
 		features[INDEX_NUM_HOLES] = holesTransitions[0];
 		features[INDEX_COL_TRANSITION] = holesTransitions[1];
 		features[INDEX_ROW_TRANSITION] = holesTransitions[2];
+		features[INDEX_COVERED_GAPS] = holesTransitions[3];
+		features[INDEX_TOTAL_WELL_DEPTH] = getWellDepths(nextState);
 		return features;
 	}
 
 	/**
-	 * The maximum column height of the board
-	 * @return      the highest row of the highest column is found, 0 if empty
-	 */
-	public double getMaxColHeight(NState state) {
-		// TODO: Implement Me!
+	* MAX HEIGHT:
+	* 		Height of the tallest column
+	* MIN HEIGHT:
+	* 		Height of the shortest column
+	* AV HEIGHT:
+	* 		Average height of all columns
+	* DIFF HEIGHT:
+	* 		Average height difference of all adjacent columns
+	*/
+	public double[] getColumnFeatures(NState state) {
 		int[] top = state.getTop();
-		int max = top[0];
-		for(int i=1;i < top.length;i++){
-			if(top[i] > max){
-	    		max = top[i];
-	    	}
-		} 
-		return max;
+		int maxHeight = 0;
+		int minHeight = Integer.MAX_VALUE;
+		int totalHeight = 0;
+		int totalDiffHeight = 0;
+
+		for (int i = 0; i < State.COLS; i++) {
+			totalHeight += top[i];
+			totalDiffHeight += (i > 0) ? Math.abs(top[i] - top[i - 1]) : 0;
+			maxHeight = Math.max(maxHeight, top[i]);
+			minHeight = Math.min(minHeight, top[i]);
+		}
+		double[] result = { maxHeight, minHeight, ((double) totalHeight) / State.COLS,
+				((double) totalDiffHeight) / (State.COLS - 1) };
+		return result;
 	}
 
 	/**
@@ -112,7 +134,6 @@ class FeatureFunction {
 	 * the piece / 2))
 	 */
 	public double getLandingHeight(NState state) {
-	    // TODO: Implement Me!
 	    int nextPiece = state.getNextPiece();
 	    
 	    int move = state.getCurrentAction();
@@ -137,30 +158,9 @@ class FeatureFunction {
 	}
 
 	public double getRowsRemoved(NState nextState) {
-		// Add extra 1 in there to avoid the chance a state where the feature returns 0
 		return nextState.getRowsCleared() - nextState.getOState().getRowsCleared() + 1;
 	}
 
-	/**
-	 * The average of all absolute differences of all column heights
-	 */
-	public double getAverageDifferenceColumnHeight(NState state) {
-		// TODO: implement me!
-		int[] top = state.getTop();
-		double total = 0.0;
-		for (int i=0; i<top.length-1; i++) {
-			total += (double) Math.abs(top[i]-top[i+1]);
-		}
-		return total/((double)(State.COLS-1));
-	}
-
-	/**
-	 * The average column height
-	 */
-	public double getAverageColumnHeight(NState state) {
-		// TODO: implement me!
-		return IntStream.of(state.getTop()).sum()/State.COLS;
-	}
 
 	/**
 	 * For the following Features:
@@ -199,9 +199,79 @@ class FeatureFunction {
 		return result;
 	}
 
-	public double calculateValue(NState state, double[] weight) {
+	/**
+	* For the following Features:
+	* Holes:
+	* 		number of empty cells that has at least one filled cell above
+	* 		it in the same column
+	* Row Transitions:
+	* 		number of filled gaps where the adjacent cell is empty along the same
+	* 		row, we count the side borders as a filled gap as well
+	* Column Transitions:
+	* 		number of filled gaps where the adjacent cell is empty along the same
+	* 		column
+	* Covered Gaps:
+	* 		number of empty holes that are covered up
+	* @return	An array that has the calculated number of holes, row transitions,
+	* 			and column transitions of the form {HOLES, COL_TRANSITIONS, ROW_TRANSITIONS }
+	*/
+	public double[] getHolesTransitionsCoveredGaps(NState state) {
+		int rowTransitions = 0;
+		int colTransitions = 0;
+		int holes = 0;
+		int coveredGaps = 0;
+
+		int[][] field = state.getField();
+		int[] top = state.getTop();
+		for (int i = 0; i < State.ROWS - 1; i++) {
+			// If cell next to the border on the right side is empty
+			// we count that as a row transition
+			if (field[i][0] == 0) {
+				rowTransitions++;
+			}
+			// If cell next to the border on the left side is empty
+			// we count that as a row transition
+			if (field[i][State.COLS - 1] == 0) {
+				rowTransitions++;
+			}
+			for (int j = 0; j < State.COLS; j++) {
+				if (j > 0 && ((field[i][j] == 0) != (field[i][j - 1] == 0))) {
+					rowTransitions++;
+				}
+				if ((field[i][j] != 0) != (field[i + 1][j] != 0)) {
+					colTransitions++;
+				}
+				if (field[i][j] <= 0 && field[i + 1][j] > 0) {
+					holes++;
+				}
+				if (field[i][j] <= 0 && i < top[j]) {
+					coveredGaps++;
+				}
+			}
+		}
+		double[] result = { holes, colTransitions, rowTransitions, coveredGaps };
+		return result;
+	}
+
+	public double getWellDepths(NState state) {
+		int[] top = state.getTop();
+
+		double totalSum = 0;
+
+		for (int i = 0; i < State.COLS; i++) {
+			int left = i == 0 ? State.ROWS : top[i - 1];
+			int right = i == State.COLS - 1 ? State.ROWS : top[i + 1];
+			// Take the shorter of
+			int wellDepth = Math.min(left, right) - top[i];
+			if (wellDepth > 0) {
+				totalSum += (wellDepth * (wellDepth + 1)) / 2;
+			}
+		}
+		return totalSum;
+	}
+
+	public double calculateValue(double[] featureValues, double[] weight) {
 		double values = 0;
-		double[] featureValues = getFeatureValues(state);
 		for (int i = 0; i < featureValues.length; i++) {
 			values += featureValues[i]*weight[i];
 		}
