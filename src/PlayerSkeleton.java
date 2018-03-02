@@ -8,7 +8,17 @@ import java.util.Random;
 public class PlayerSkeleton {
 	FeatureFunction f = new FeatureFunction();
 	double[] weights = {
-			1.982963276321388E-5, 1.1071800975126921E-7, 3.0996457506140976E-4, -2.52163738556298E-5, 4.450032757338146E-5, -6.323160558657387E-6, -8.81422807771626E-6, -6.781594693912656E-6, 5.899508205258744E-7,
+			-4.500158825082766,
+			4.500158825082766,
+			-4.500158825082766,
+			-3.4181268101392694,
+			-2.52163738556298,
+			8.450032757338146E-5,
+			-7.899265427351652,
+			-3.2178882868487753,
+			-9.348695305445199,
+			-9.348695305445199,
+			-3.3855972247263626,
 	};
 	NState nextState = new NState();
 
@@ -54,14 +64,16 @@ public class PlayerSkeleton {
 class FeatureFunction {
 	private static int countFeatures = 0;
 	// Indexes of the feature array values
-	public static final int INDEX_MAX_COL_HEIGHT = countFeatures++;
+	public static final int INDEX_MAX_HEIGHT = countFeatures++;
+	public static final int INDEX_MIN_HEIGHT = countFeatures++;
+	public static final int INDEX_AV_HEIGHT = countFeatures++;
+	public static final int INDEX_AV_DIFF_HEIGHT = countFeatures++;
 	public static final int INDEX_LANDING_HEIGHT = countFeatures++;
 	public static final int INDEX_NUM_ROWS_REMOVED = countFeatures++;
-	public static final int INDEX_AV_DIFF_COL_HEIGHT = countFeatures++;
-	public static final int INDEX_AV_COL_HEIGHT = countFeatures++;
 	public static final int INDEX_NUM_HOLES = countFeatures++;
 	public static final int INDEX_COL_TRANSITION = countFeatures++;
 	public static final int INDEX_ROW_TRANSITION = countFeatures++;
+	public static final int INDEX_COVERED_GAPS = countFeatures++;
 	public static final int INDEX_TOTAL_WELL_DEPTH = countFeatures++;
 
 	public static final int NUM_FEATURES = countFeatures;
@@ -74,33 +86,48 @@ class FeatureFunction {
 	public double[] getFeatureValues(NState nextState) {
 		double[] features = new double[NUM_FEATURES];
 		// The rest of the feature vector
-		features[INDEX_MAX_COL_HEIGHT] = getMaxColHeight(nextState);
+		double[] columnFeatures = getColumnFeatures(nextState);
+		features[INDEX_MAX_HEIGHT] = columnFeatures[0];
+		features[INDEX_MIN_HEIGHT] = columnFeatures[1];
+		features[INDEX_AV_HEIGHT] = columnFeatures[2];
+		features[INDEX_AV_DIFF_HEIGHT] = columnFeatures[3];
 		features[INDEX_LANDING_HEIGHT] = getLandingHeight(nextState);
 		features[INDEX_NUM_ROWS_REMOVED] = getRowsRemoved(nextState);
-		features[INDEX_AV_DIFF_COL_HEIGHT] = getAverageDifferenceColumnHeight(nextState);
-		features[INDEX_AV_COL_HEIGHT] = getAverageColumnHeight(nextState);
-		double[] holesTransitions = getHolesTransitions(nextState);
+		double[] holesTransitions = getHolesTransitionsCoveredGaps(nextState);
 		features[INDEX_NUM_HOLES] = holesTransitions[0];
 		features[INDEX_COL_TRANSITION] = holesTransitions[1];
 		features[INDEX_ROW_TRANSITION] = holesTransitions[2];
+		features[INDEX_COVERED_GAPS] = holesTransitions[3];
 		features[INDEX_TOTAL_WELL_DEPTH] = getWellDepths(nextState);
 		return features;
 	}
 
 	/**
-	 * The maximum column height of the board
-	 * @return      the highest row of the highest column is found, 0 if empty
+	 * MAX HEIGHT:
+	 * 		Height of the tallest column
+	 * MIN HEIGHT:
+	 * 		Height of the shortest column
+	 * AV HEIGHT:
+	 * 		Average height of all columns
+	 * DIFF HEIGHT:
+	 * 		Average height difference of all adjacent columns
 	 */
-	public double getMaxColHeight(NState state) {
+	public double[] getColumnFeatures(NState state) {
 		// TODO: Implement Me!
 		int[] top = state.getTop();
-		int max = top[0];
-		for(int i=1;i < top.length;i++){
-			if(top[i] > max){
-	    		max = top[i];
-	    	}
-		} 
-		return max;
+		int maxHeight = 0;
+		int minHeight = Integer.MAX_VALUE;
+		int totalHeight = 0;
+		int totalDiffHeight = 0;
+
+		for(int i = 0; i < State.COLS; i++) {
+			totalHeight += top[i];
+			totalDiffHeight += (i>0) ? Math.abs(top[i]-top[i-1]) : 0;
+			maxHeight = Math.max(maxHeight, top[i]);
+			minHeight = Math.min(minHeight, top[i]);
+		}
+		double[] result = {maxHeight, minHeight, ((double)totalHeight)/State.COLS, ((double)totalDiffHeight)/(State.COLS - 1)};
+		return result;
 	}
 
 	/**
@@ -117,29 +144,7 @@ class FeatureFunction {
 	}
 
 	public double getRowsRemoved(NState nextState) {
-		// Add extra 1 in there to avoid the chance a state where the feature returns 0
-		return nextState.getRowsCleared() - nextState.getOState().getRowsCleared() + 1;
-	}
-
-	/**
-	 * The average of all absolute differences of all column heights
-	 */
-	public double getAverageDifferenceColumnHeight(NState state) {
-		// TODO: implement me!
-		int[] top = state.getTop();
-		double total = 0.0;
-		for (int i=0; i<top.length-1; i++) {
-			total += (double) Math.abs(top[i]-top[i+1]);
-		}
-		return total/((double)(state.COLS-1));
-	}
-
-	/**
-	 * The average column height
-	 */
-	public double getAverageColumnHeight(NState state) {
-		// TODO: implement me!
-		return IntStream.of(state.getTop()).sum()/state.COLS;
+		return nextState.getRowsCleared() - nextState.getOState().getRowsCleared();
 	}
 
 	/**
@@ -153,15 +158,19 @@ class FeatureFunction {
 	 * Column Transitions:
 	 * 		number of filled gaps where the adjacent cell is empty along the same
 	 * 		column
+	 * Covered Gaps:
+	 * 		number of empty holes that are covered up
 	 * @return	An array that has the calculated number of holes, row transitions,
 	 * 			and column transitions of the form {HOLES, COL_TRANSITIONS, ROW_TRANSITIONS }
 	 */
-	public double[] getHolesTransitions(NState state) {
+	public double[] getHolesTransitionsCoveredGaps(NState state) {
 		int rowTransitions = 0;
 		int colTransitions = 0;
 		int holes = 0;
+		int coveredGaps = 0;
 
 		int[][] field = state.getField();
+		int[] top = state.getTop();
 		for(int i=0; i < State.ROWS - 1; i++) {
 			// If cell next to the border on the right side is empty
 			// we count that as a row transition
@@ -173,9 +182,10 @@ class FeatureFunction {
 				if(j > 0 && ((field[i][j] == 0) != (field[i][j-1] == 0))){ rowTransitions++; }
 				if((field[i][j] != 0) != (field[i+1][j] != 0)) { colTransitions++; }
 				if (field[i][j] <= 0 && field[i + 1][j] > 0) { holes++; }
+				if(field[i][j] <= 0 && i < top[j]) { coveredGaps++; }
 		}
 	}
-		double[] result = { holes, colTransitions, rowTransitions };
+		double[] result = { holes, colTransitions, rowTransitions, coveredGaps };
 		return result;
 	}
 
@@ -393,33 +403,61 @@ class Player {
 		return bestMove;
 	}
 
+	// INDEX_MAX_HEIGHT;
+	// INDEX_MIN_HEIGHT;
+	// INDEX_AV_HEIGHT;
+	// INDEX_AV_DIFF_HEIGHT;
+	// INDEX_LANDING_HEIGHT;
+	// INDEX_NUM_ROWS_REMOVED;
+	// INDEX_NUM_HOLES;
+	// INDEX_COL_TRANSITION;
+	// INDEX_ROW_TRANSITION;
+	// INDEX_TOTAL_WELL_DEPTH;
 	Player() {
-		this.rand = new Random();
-		// Random Weights
-		this.weights = new double[FeatureFunction.NUM_FEATURES];
-		for(int i = 0; i < weights.length; i++) {
-			this.weights[i] = this.rand.nextDouble();
+		// this.rand = new Random();
+		// // Random Weights
+		// this.weights = new double[FeatureFunction.NUM_FEATURES];
+		// for(int i = 0; i < weights.length; i++) {
+		// 	this.weights[i] = this.rand.nextDouble();
+		// }
+		double[] _weights = {
+			-4.500158825082766,
+			4.500158825082766,
+			-4.500158825082766,
+			-3.4181268101392694,
+			-2.52163738556298,
+			8.450032757338146E-5,
+			-7.899265427351652,
+			-3.2178882868487753,
+			-9.348695305445199,
+			-9.348695305445199,
+			-3.3855972247263626,
+		};
+		for(int i = 0; i < this.weights.length; i++) {
+			this.weights[i] = _weights[i];
 		}
 	}
 
-	public static void playGame(LearnerLSPI learner) {
+	public static int playGame(LearnerLSPI learner) {
 		State s = new State();
 		Player p = new Player();
 		while(!s.hasLost()) {
 			s.makeMove(p.pickMove(s,s.legalMoves(), learner));
 		}
+		return s.getRowsCleared();
 		// System.out.println("You have completed "+s.getRowsCleared()+" rows.");
 	}
 	
 	public static void main(String[] args) {
 		int count = 0;
+		int score = 0;
 		LearnerLSPI learner = new LearnerLSPI();
-		int NUM_GAMES = 1000000;
+		int NUM_GAMES = 10000;
 		while(count < NUM_GAMES) {
-			playGame(learner);
+			score += playGame(learner);
 			count++;
-			if(count%1000 == 0) {
-				System.out.printf("Game %d of %d, %f through\n", count, NUM_GAMES, (double)count/NUM_GAMES*100);
+			if(count%100 == 0) {
+				System.out.printf("Game %d of %d, average score: %f, %fpercent\n", count, NUM_GAMES, (double)score/count, (double)count/NUM_GAMES*100);
 			}
 		}
 		// LearnerLSPI.prettyPrintMatrix(learner.A);
@@ -463,6 +501,7 @@ class LearnerLSPI {
 
 	public double[] getWeight() {
 		double[][] weightsVector = new double[FeatureFunction.NUM_FEATURES][1];
+		double[][] copyA = new double[A.length][A[0].length];
 		matrixMultiply(invert(A), b, weightsVector, false, false);
 		double[] weights = new double[FeatureFunction.NUM_FEATURES];
 		for(int i = 0; i < FeatureFunction.NUM_FEATURES; i++) {
@@ -631,6 +670,80 @@ class LearnerLSPI {
 				for (int l = j + 1; l < n; ++l)
 					a[index[i]][l] -= pj * a[index[j]][l];
 			}
+		}
+	}
+
+	/**
+	 * Perform gauss jordan elimination over over 2 matrices of AX = B
+	 */
+	// public static double[][] GaussJordanElimination(double[][] augMat){
+	// 	int startCol = 0;
+	// 	for(int row = 0; row < augMat.length; row++) {
+	// 		while(augMat[row][startCol]==0) {
+	// 			boolean switched = false;
+	// 		}
+	// 	}
+	// }
+
+	public static double[][] getAugmentedMatrix(double[][] A, double[][] B){
+		// Increase the column size
+		double[][] augMat = new double[A.length][A[0].length + B[0].length];
+		for(int i = 0; i < A.length; i++) {
+			for(int j = 0; j < A[0].length; j++) {
+				augMat[i][j] = A[i][j];
+			}
+		}
+		for (int i = 0; i < B.length; i++) {
+			for (int j = 0; j < B[0].length; j++) {
+				augMat[i][j+A[0].length] = B[i][j];
+			}
+		}
+		return augMat;
+	}
+
+	/**
+	 * Runs a Gauss-Jordan elimination on the augmented matrix in order to put
+	 * it into reduced row echelon form
+	 *
+	 */
+	public void GaussJordanElimination(double[][] augmentedMatrix) {
+		int startColumn = 0;
+		for (int row = 0; row < augmentedMatrix.length; row++) {
+			//if the number in the start column is 0, try to switch with another
+			while (augmentedMatrix[row][startColumn] == 0.0) {
+				boolean switched = false;
+				int i = row;
+				while (!switched && i < augmentedMatrix.length) {
+					if (augmentedMatrix[i][startColumn] != 0.0) {
+						double[] temp = augmentedMatrix[i];
+						augmentedMatrix[i] = augmentedMatrix[row];
+						augmentedMatrix[row] = temp;
+						switched = true;
+					}
+					i++;
+				}
+				//if after trying to switch, it is still 0, increase column
+				if (augmentedMatrix[row][startColumn] == 0.0) {
+					startColumn++;
+				}
+			}
+			//if the number isn't one, reduce to one
+			if (augmentedMatrix[row][startColumn] != 1.0) {
+				double divisor = augmentedMatrix[row][startColumn];
+				for (int i = startColumn; i < augmentedMatrix[row].length; i++) {
+					augmentedMatrix[row][i] = augmentedMatrix[row][i] / divisor;
+				}
+			}
+			//make sure the number in the start column of all other rows is 0
+			for (int i = 0; i < augmentedMatrix.length; i++) {
+				if (i != row && augmentedMatrix[i][startColumn] != 0) {
+					double multiple = 0 - augmentedMatrix[i][startColumn];
+					for (int j = startColumn; j < augmentedMatrix[row].length; j++) {
+						augmentedMatrix[i][j] += multiple * augmentedMatrix[row][j];
+					}
+				}
+			}
+			startColumn++;
 		}
 	}
 }
