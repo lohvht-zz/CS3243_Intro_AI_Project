@@ -1,6 +1,3 @@
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.stream.IntStream;
 
 public class PlayerSkeleton {
@@ -115,8 +112,28 @@ class FeatureFunction {
 	 * the piece / 2))
 	 */
 	public double getLandingHeight(NState state) {
-		// TODO: Implement Me!
-		return -1;
+	    // TODO: Implement Me!
+	    int nextPiece = state.getNextPiece();
+	    
+	    int move = state.getCurrentAction();
+	    int[][] moves = state.legalMoves();
+	    int orient = moves[move][State.ORIENT];
+	    int slot = moves[move][State.SLOT];
+	    
+	    int[][] pWidth = State.getpWidth();
+	    int pieceWidth = pWidth[nextPiece][orient];
+	    int[][][] pTop = State.getpTop();
+	    
+	    int[] top = state.getTop();
+	    int maxLandingHeight = -Integer.MAX_VALUE;
+	    
+	    for(int c = 0; c < pieceWidth; c++) {
+	        int currentLandingHeight = top[slot+c]+pTop[nextPiece][orient][c] / 2;
+	        if (currentLandingHeight > maxLandingHeight) {
+	            maxLandingHeight = currentLandingHeight;
+	        }
+	    }
+	    return maxLandingHeight;
 	}
 
 	public double getRowsRemoved(NState nextState) {
@@ -134,7 +151,7 @@ class FeatureFunction {
 		for (int i=0; i<top.length-1; i++) {
 			total += (double) Math.abs(top[i]-top[i+1]);
 		}
-		return total/((double)(state.COLS-1));
+		return total/((double)(State.COLS-1));
 	}
 
 	/**
@@ -142,7 +159,7 @@ class FeatureFunction {
 	 */
 	public double getAverageColumnHeight(NState state) {
 		// TODO: implement me!
-		return IntStream.of(state.getTop()).sum()/state.COLS;
+		return IntStream.of(state.getTop()).sum()/State.COLS;
 	}
 
 	/**
