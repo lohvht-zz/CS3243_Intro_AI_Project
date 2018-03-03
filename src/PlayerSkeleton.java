@@ -157,7 +157,7 @@ class FeatureFunction {
 	}
 
 	public double getRowsRemoved(NState nextState) {
-		return nextState.getRowsCleared() - nextState.getOState().getRowsCleared() + 1;
+		return nextState.getRowsCleared() - nextState.getOState().getRowsCleared();
 	}
 
 
@@ -449,38 +449,73 @@ class Learner {
 	*/
 	public static double DISCOUNT = 0.7;
 	public static double LOST_REWARD = -100000;
+	public static double ERROR = 0.0005;
 
 	public double[][] A = new double[FeatureFunction.NUM_FEATURES][FeatureFunction.NUM_FEATURES];
 	public double[][] b = new double[FeatureFunction.NUM_FEATURES][1];
+
+	private double[] prevWeights;
+	private double[] weights;
+	
+	public void LSTDQ(int sampleSize) {
+		/**
+		 * TODO: Implement me
+		 * main Loop for LSTDQ, general pseudocode:
+		 * 
+		 * 	for each state s generated (up to a certain limit):
+		 * 		make the best move that maximises the value function, using the weights,
+		 * 		the resultant state will be s'
+		 * 		Update the A and b by calling LSTDQUpdate()
+		 * 		try to update the weights if A^-1 can be found using extractAndUpdateWeights()
+		 */
+	}
+
+	public double[] LSPI() {
+		/**
+		 * TODO: Implement me
+		 * 
+		 * 	main Loop for LSPI, general pseudocode:
+		 * 
+		 * 	while (weights - prevWeights) >= ERROR, do:
+		 * 		Run LSTDQ(LIMIT)
+		 */
+	}
 
 	// Features coming in are of the form of 1xk vectors (i.e. row vectors)
 	public void LSTDQUpdate(double[][] currentFeature, double[][] successorFeature, NState successorState) {
 		double[][] difference = Matrix.matrixSum(
 			currentFeature,
-			Matrix.matrixScalarMultiply(successorFeature, -1*DISCOUNT),
-			false,
-			false
-		);
-		double[][] stepA = Matrix.matrixMultiply(
-			currentFeature,
-			difference,
-			true,
-			false
-		);
+			Matrix.matrixScalarMultiply(successorFeature, -1*DISCOUNT), false, false);
+		double[][] stepA = Matrix.matrixMultiply(currentFeature, difference, true, false);
 		A = Matrix.matrixSum(A, stepA, false, false);
 		double reward = getReward(successorState);
-		b = Matrix.matrixSum(
-			b,
-			Matrix.matrixScalarMultiply(currentFeature, reward),
-			false,
-			true
-		);
+		b = Matrix.matrixSum(b, Matrix.matrixScalarMultiply(currentFeature, reward), false, true);
 	}
 
 	private static double getReward(NState s) {
-		return (s.hasLost())
-			? LOST_REWARD
-			: s.getRowsCleared() - s.getOState().getRowsCleared();
+		return (s.hasLost()) ? LOST_REWARD : s.getRowsCleared() - s.getOState().getRowsCleared();
+	}
+
+	/**
+	 * Updates the weights, assuming if an inverse for A can be found
+	 */
+	private void extractAndUpdateWeights() {
+		// this should be a Kx1 column vector, where K is the number of features
+		double[][] weightVector = Matrix.solveMatrix(A, b);
+		if(weightVector == null) {
+			return;
+		}
+		this.prevWeights = this.weights;
+		this.weights = colVectorToArray(weightVector);
+	}
+
+	// Column vectors are vectors of mX1
+	private static double[] colVectorToArray(double[][] vector) {
+		double[] newArray = new double[vector.length];
+		for(int i = 0; i < vector.length; i++) {
+			newArray[i] = vector[i][0];
+		}
+		return newArray;
 	}
 }
 
@@ -583,6 +618,38 @@ class Matrix {
 		}
 	}
 
+	/**
+	 * Wrapper to solve AX = B using gauss jordan elimination
+	 * @return 	the solution vector/matrix if the resultant LHS is reduced to an
+	 * 			identity matrix, else returns null
+	 */
+	public static double[][] solveMatrix(double[][] A, double[][] B) {
+		double[][] augMat = getAugmentedMatrix(A, B);
+		gaussJordanElmination(augMat);
+		int numOfColsCoefficientMatrix = A[0].length;
+		double[][] reducedA = getCoefficientMatrix(augMat, numOfColsCoefficientMatrix);
+		return (isIdentity(reducedA)) ? getSolutionMatrix(augMat, numOfColsCoefficientMatrix) : null;
+	}
+
+	public static boolean isIdentity(double[][] matrix) {
+		if(matrix.length != matrix[0].length) {
+			return false;
+		}
+		boolean isIdent = true;
+		for(int i = 0; i < matrix.length; i++) {
+			for(int j = 0; j < matrix[0].length; j++) {
+				if((i == j && matrix[i][j] != 1.0) || (i != j && matrix[i][j] != 0.0)) {
+					isIdent = false;
+					break;
+				}
+			}
+			if(!isIdent) {
+				break;
+			}
+		}
+		return isIdent;
+	}
+
 	public static void prettyPrintMatrix(double[][] matrix) {
 		System.out.println("=======================");
 		for (int i = 0; i < matrix.length; i++) {
@@ -624,7 +691,7 @@ class Matrix {
 	 * ============================================
 	 */
 
-	private static double[][] getAugmentedMatrix(double[][] A, double[][] B) {
+	public static double[][] getAugmentedMatrix(double[][] A, double[][] B) {
 		// Increase the column size
 		double[][] augMat = new double[A.length][A[0].length + B[0].length];
 		for (int i = 0; i < A.length; i++) {
@@ -640,7 +707,7 @@ class Matrix {
 		return augMat;
 	}
 
-	private static double[][] getSolutionMatrix(double[][] augmentedMatrix,
+	public static double[][] getSolutionMatrix(double[][] augmentedMatrix,
 		int numOfColsCoefficientMatrix) {
 		int numRows = augmentedMatrix.length;
 		// number of columns that solution matrix has is:
@@ -653,7 +720,7 @@ class Matrix {
 		return result;
 	}
 
-	private static double[][] getCoefficientMatrix(double[][] augmentedMatrix,
+	public static double[][] getCoefficientMatrix(double[][] augmentedMatrix,
 		int numOfColsCoefficientMatrix) {
 		int numRows = augmentedMatrix.length;
 		// number of columns that solution matrix has is:
