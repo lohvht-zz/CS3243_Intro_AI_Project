@@ -1,4 +1,6 @@
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.Random;
 public class PlayerSkeleton {
 	FeatureFunction f = new FeatureFunction();
@@ -430,6 +432,38 @@ class NState extends State {
  * 		State.N_PIECE
  */
 class StateGenerator {
+	public static NState generatePseudoBestState(int moves) {
+		State state = new State();
+		NState prevState = new NState();
+		for (int i=0; i<moves; i++) {
+			if (!state.hasLost()) {
+				//save existing state
+				prevState.copy(state);
+				//set lowest height to postive inf
+				int lowestHeight = Integer.MAX_VALUE;
+				//create a temp state to check moves, allows copying of prev state to check all moves
+				NState tempState = new NState();
+				//store all best moves here
+				ArrayList<Integer> bestMoves = new ArrayList<Integer>();
+				for (int j=0; j<prevState.legalMoves().length; j++) {
+					tempState.copy(prevState);
+					Random r = new Random();
+					tempState.makeMove(r.nextInt(state.legalMoves().length));
+					//need to know how to use feature function
+				}
+				
+			} else {
+				System.out.println("Game Lost, printing Previous State:");
+				printState(prevState);
+				return prevState;
+			}
+		}
+		prevState.copy(state);
+		System.out.println("Moves Complete, printing Final State:");
+		printState(prevState);
+		return prevState;
+	}
+	
 	public static NState generateState(int moves) {
 		State state = new State();
 		NState prevState = new NState();
