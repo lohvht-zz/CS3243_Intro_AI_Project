@@ -1,4 +1,7 @@
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.Random;
 public class PlayerSkeleton {
 	FeatureFunction f = new FeatureFunction();
 
@@ -39,6 +42,7 @@ public class PlayerSkeleton {
 	}
 	
 	public static void main(String[] args) {
+		
 		State s = new State();
 		new TFrame(s);
 		PlayerSkeleton p = new PlayerSkeleton();
@@ -54,6 +58,11 @@ public class PlayerSkeleton {
 			}
 		}
 		System.out.println("You have completed "+s.getRowsCleared()+" rows.");
+		/*
+		StateGenerator sg = new StateGenerator();
+		sg.generateState(20);
+		sg.generatePseudoBestState(20);
+		*/
 	}
 	
 }
@@ -425,9 +434,85 @@ class NState extends State {
  * 		State.N_PIECE
  */
 class StateGenerator {
-	public static NState generateState() {
-		// TODO: Implement me!
-		return null;
+	
+	public static NState generatePseudoBestState(int moves) {
+		FeatureFunction ff = new FeatureFunction();
+		State state = new State();
+		NState prevState = new NState();
+		for (int i=0; i<moves; i++) {
+			if (!state.hasLost()) {
+				//save existing state
+				prevState.copy(state);
+				//set lowest height to postive inf
+				double lowestHeight = Double.MAX_VALUE;
+				//create a temp state to check moves, allows copying of prev state to check all moves
+				NState tempState = new NState();
+				//store all best moves here
+				ArrayList<Integer> bestMoves = new ArrayList<Integer>();
+				for (int j=0; j<prevState.legalMoves().length; j++) {
+					tempState.copy(prevState);
+					tempState.makeMove(j);
+					//need to know how to use feature function
+					if (ff.getColumnFeatures(tempState)[0]<lowestHeight) {
+						bestMoves.clear();
+						bestMoves.add(j);
+						lowestHeight = ff.getColumnFeatures(tempState)[0];
+					} else if (ff.getColumnFeatures(tempState)[0]==lowestHeight){
+						bestMoves.add(j);
+					}
+				}
+				Random r = new Random();
+				state.makeMove(bestMoves.get(r.nextInt(bestMoves.size())));
+			} else {
+				System.out.println("Game Lost, printing Previous State:");
+				printState(prevState);
+				return prevState;
+			}
+		}
+		prevState.copy(state);
+		System.out.println("Moves Complete, printing Final State:");
+		printState(prevState);
+		return prevState;
+	}
+	
+	public static NState generateState(int moves) {
+		State state = new State();
+		NState prevState = new NState();
+		for (int i=0; i<moves; i++) {
+			if (!state.hasLost()) {
+				//System.out.println("Before move made.");
+				//printState(state);
+				prevState.copy(state);
+				Random r = new Random();
+				state.makeMove(r.nextInt(state.legalMoves().length));
+				//System.out.println("\nAfter move made");
+				//printState(state);
+			} else {
+				System.out.println("Game Lost, printing Previous State:");
+				printState(prevState);
+				return prevState;
+			}
+		}
+		prevState.copy(state);
+		System.out.println("Moves Complete, printing Final State:");
+		printState(prevState);
+		return prevState;
+	}
+	
+	public static void printState(State s) {
+		int[][] field = s.getField();
+		for (int i=s.ROWS-1; i>=0;i--) {
+			String row = "";
+			for (int j=s.COLS-1; j>=0; j--) {
+				if (field[i][j]!=0) {
+					row += "[" + field[i][j] + "]";
+				}else {
+					row += "[ ]";
+				}
+			}
+			System.out.println(row);
+			row = "";
+		}
 	}
 }
 
@@ -479,6 +564,7 @@ class Learner {
 		 * 	while (weights - prevWeights) >= ERROR, do:
 		 * 		Run LSTDQ(LIMIT)
 		 */
+		return new double[1];
 	}
 
 	// Features coming in are of the form of 1xk vectors (i.e. row vectors)
