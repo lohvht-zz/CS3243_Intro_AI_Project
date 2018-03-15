@@ -1,6 +1,9 @@
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+
 public class PlayerSkeleton {
 	FeatureFunction f = new FeatureFunction();
 
@@ -640,12 +643,13 @@ class Learner {
 	}
 
 	// start with random current weights
-	public double[] LSPI(boolean isPlayLearning, int count) {
+	public double[] LSPI(boolean isPlayLearning, int limit) {
 		weights = new double[FeatureFunction.NUM_FEATURES];
 		prevWeights = new double[FeatureFunction.NUM_FEATURES];
 		for(int i = 0; i < weights.length; i++) {
 			weights[i] = (rand.nextBoolean()) ? rand.nextDouble() : -1 * rand.nextDouble();
 		}
+		int count = 0;
 		while(difference(prevWeights, weights) >= STOPPING_CRITERION) {
 			if(isPlayLearning) {
 				// plays a game, and updates
@@ -658,8 +662,8 @@ class Learner {
 			if(count % 5 == 0) {
 				System.out.printf("The difference is: %f, the count is: %d\n", difference(prevWeights, weights), count);
 			}
-			count--;
-			if(count <= 0) {
+			count++;
+			if(count >= limit) {
 				break;
 			}
 		}
@@ -715,9 +719,9 @@ class Learner {
 	public static void main(String[] args) {
 		Learner learner = new Learner();
 		boolean isPlayLearning = true;
-		int count = 50;
+		int limit = Integer.MAX_VALUE;
 
-		learner.LSPI(isPlayLearning, count);
+		learner.LSPI(isPlayLearning, limit);
 		System.out.println("FINAL WEIGHTS: ");
 		System.out.println(Arrays.toString(learner.weights));
 	}
