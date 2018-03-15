@@ -136,27 +136,28 @@ class FeatureFunction {
 	 * the piece / 2))
 	 */
 	public double getLandingHeight(NState state) {
-	    int nextPiece = state.getNextPiece();
-
+		// Current action is actually the action taken to derive NState
 		int move = state.getCurrentAction();
-		int[][] moves = state.legalMoves();
-	    int orient = moves[move][State.ORIENT];
-	    int slot = moves[move][State.SLOT];
 
-	    int[][] pWidth = State.getpWidth();
-	    int pieceWidth = pWidth[nextPiece][orient];
-	    int[][][] pTop = State.getpTop();
+		State originalState = state.getOState();
+		int piece = originalState.getNextPiece();
+		int[][] moves = originalState.legalMoves();
+		int orient = moves[move][State.ORIENT];
+		int slot = moves[move][State.SLOT];
+		int[] top = originalState.getTop();
 
-	    int[] top = state.getTop();
-	    int maxLandingHeight = -Integer.MAX_VALUE;
+		int pieceWidth = State.getpWidth()[piece][orient];
+		int[][][] pTop = State.getpTop();
 
-	    for(int c = 0; c < pieceWidth; c++) {
-	        int currentLandingHeight = top[slot+c]+pTop[nextPiece][orient][c] / 2;
-	        if (currentLandingHeight > maxLandingHeight) {
-	            maxLandingHeight = currentLandingHeight;
-	        }
-	    }
-	    return maxLandingHeight;
+		int maxLandingHeight = -Integer.MAX_VALUE;
+
+		for (int c = 0; c < pieceWidth; c++) {
+			int currentLandingHeight = top[slot + c] + pTop[piece][orient][c] / 2;
+			if (currentLandingHeight > maxLandingHeight) {
+				maxLandingHeight = currentLandingHeight;
+			}
+		}
+		return maxLandingHeight;
 	}
 
 	public double getRowsRemoved(NState nextState) {
@@ -354,10 +355,20 @@ class NState extends State {
 
 	public boolean hasLost() { return lost; }
 
+	public int[][] legalMoves() {
+		return legalMoves[this.nextPiece];
+	}
+
 	//make a move based on the move index - its order in the legalMoves list
 	public void makeMove(int move) {
 		this.setCurrentAction(move);
 		makeMove(legalMoves[nextPiece][move]);
+	}
+
+	public void makeRandomMove() {
+		Random rand = new Random(System.nanoTime());
+		this.makeMove(rand.nextInt(this.legalMoves().length));
+		this.setNextPiece(rand.nextInt(State.N_PIECES));
 	}
 
 	//returns false if you lose - true otherwise
@@ -570,6 +581,8 @@ class Learner {
 
 		while(sampleNumber < sampleSize) {
 			NState state = StateGenerator.generateState(rand.nextInt(50) + 1);
+			// Fixes the -1 index error, also will generate a next piece
+			state.makeRandomMove();
 			legalMoves = state.legalMoves();
 			currFeat[0] = f.getFeatureValues(state);
 			maxValue = -Double.MAX_VALUE;
@@ -589,7 +602,6 @@ class Learner {
 			LSTDQ_OPTUpdate(currFeat, bestSuccFeat, bestMoveHasLost);
 			sampleNumber++;
 		}
-
 		extractAndUpdateWeights();
 	}
 
@@ -746,16 +758,23 @@ class Learner {
 
 	public static void main(String[] args) {
 		Learner learner = new Learner();
-		boolean isPlayLearning = true;
+		
+		String filename = (args[0].length() != 0) ? args[0] : "weights_1.txt";
+		boolean isPlayLearning = (args[1] == "y") ? true : false;
 		int limit = Integer.MAX_VALUE;
-		// int limit = 1000;
 		int sampleSize = 10000;
+		try {
+			limit = Integer.parseInt(args[2]);
+		} catch(Exception e) {}
+		try {
+			sampleSize = Integer.parseInt(args[3]);
+		} catch (Exception e) {}
 
 		double[] startingWeights = { -0.01414993, -0.00659672, 0.00140868,
 			-0.02396361, -0.00134246, -0.03055654, -0.06026152,
 			-0.02105507, -0.0340038, -0.0117935 };
 
-		learner.LSPI(isPlayLearning, limit, sampleSize, "weights_LSTDQPlay_1.txt", startingWeights);
+		learner.LSPI(isPlayLearning, limit, sampleSize, filename, startingWeights);
 		System.out.println("FINAL WEIGHTS: ");
 		System.out.println(Arrays.toString(learner.weights));
 	}
