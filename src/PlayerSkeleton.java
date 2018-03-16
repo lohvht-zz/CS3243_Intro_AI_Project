@@ -8,9 +8,8 @@ import java.text.NumberFormat;
 
 public class PlayerSkeleton {
 	FeatureFunction f = new FeatureFunction();
-
 	double[] weights = 
-		{ -0.01414993, -0.00659672, 0.00140868, -0.02396361, -0.00134246, -0.03055654, -0.06026152, -0.02105507, -0.0340038, -0.0117935 };
+		{ -0.00134246, -0.01414993, -0.00659672, 0.00140868, -0.02396361, -0.03055654, -0.06026152, -0.02105507, -0.0340038, -0.0117935 };
 	NState nextState = new NState();
 	double[] featureValues = null;
 
@@ -70,11 +69,11 @@ public class PlayerSkeleton {
 class FeatureFunction {
 	private static int countFeatures = 0;
 	// Indexes of the feature array values
+	public static final int INDEX_NUM_ROWS_REMOVED = countFeatures++;
 	public static final int INDEX_MAX_HEIGHT = countFeatures++;
 	public static final int INDEX_AV_HEIGHT = countFeatures++;
 	public static final int INDEX_AV_DIFF_HEIGHT = countFeatures++;
 	public static final int INDEX_LANDING_HEIGHT = countFeatures++;
-	public static final int INDEX_NUM_ROWS_REMOVED = countFeatures++;
 	public static final int INDEX_NUM_HOLES = countFeatures++;
 	public static final int INDEX_COL_TRANSITION = countFeatures++;
 	public static final int INDEX_ROW_TRANSITION = countFeatures++;
@@ -82,7 +81,6 @@ class FeatureFunction {
 	public static final int INDEX_TOTAL_WELL_DEPTH = countFeatures++;
 
 	public static final int NUM_FEATURES = countFeatures;
-	// TODO: REMOVED MIN HEIGHT? Write it in report
 
 	/**
 	 * Helper function that computes all the features and returns it as a vector
@@ -93,11 +91,11 @@ class FeatureFunction {
 		double[] features = new double[NUM_FEATURES];
 		// The rest of the feature vector
 		double[] columnFeatures = getColumnFeatures(nextState);
+		features[INDEX_NUM_ROWS_REMOVED] = getRowsRemoved(nextState);
 		features[INDEX_MAX_HEIGHT] = columnFeatures[0];
 		features[INDEX_AV_HEIGHT] = columnFeatures[1];
 		features[INDEX_AV_DIFF_HEIGHT] = columnFeatures[2];
 		features[INDEX_LANDING_HEIGHT] = getLandingHeight(nextState);
-		features[INDEX_NUM_ROWS_REMOVED] = getRowsRemoved(nextState);
 		double[] holesTransitions = getHolesTransitionsCoveredGaps(nextState);
 		features[INDEX_NUM_HOLES] = holesTransitions[0];
 		features[INDEX_COL_TRANSITION] = holesTransitions[1];
@@ -161,7 +159,7 @@ class FeatureFunction {
 	}
 
 	public double getRowsRemoved(NState nextState) {
-		return nextState.getRowsCleared() - nextState.getOState().getRowsCleared() + 1;
+		return nextState.getRowsCleared() - nextState.getOState().getRowsCleared();
 	}
 
 
@@ -542,7 +540,7 @@ class Learner {
 	* where currentFeatures, successorFeatures are kx1 vectors representing the feature array
 	*/
 	private static double DISCOUNT = 0.9;
-	private static double STOPPING_CRITERION = 0.001;
+	private static double STOPPING_CRITERION = 0.005;
 	private static double LOST_REWARD = -100000;
 	private static NumberFormat df = new DecimalFormat("###.########");
 
@@ -579,8 +577,13 @@ class Learner {
 		double currentValue;
 		boolean bestMoveHasLost;
 
+		double percentageOfPseudoGoodStates = 0.7;
+
 		while(sampleNumber < sampleSize) {
-			NState state = StateGenerator.generateState(rand.nextInt(50) + 1);
+			int generatingMoves = rand.nextInt(20) + 1;
+			NState state = (rand.nextDouble() <= percentageOfPseudoGoodStates)
+				? StateGenerator.generatePseudoBestState(generatingMoves)
+				: StateGenerator.generateState(generatingMoves);
 			// Fixes the -1 index error, also will generate a next piece
 			state.makeRandomMove();
 			legalMoves = state.legalMoves();
@@ -602,6 +605,9 @@ class Learner {
 			LSTDQ_OPTUpdate(currFeat, bestSuccFeat, bestMoveHasLost);
 			sampleNumber++;
 		}
+		// System.out.println("Respective B b matrices");
+		// Matrix.prettyPrintMatrix(B);
+		// Matrix.prettyPrintMatrix(b);
 		extractAndUpdateWeights();
 	}
 
@@ -694,7 +700,8 @@ class Learner {
 		StringBuilder weightsLine = new StringBuilder();
 		weightsLine.append("{ ");
 		for (int i = 0; i < weights.length; i++) {
-			weightsLine.append(df.format(weights[i]));
+			// weightsLine.append(df.format(weights[i]));
+			weightsLine.append(weights[i]);
 			if(i!=weights.length-1) {
 				weightsLine.append(", ");
 			}
@@ -705,6 +712,9 @@ class Learner {
 
 	// Features coming in are of the form of 1xk vectors (i.e. row vectors) INSTEAD OF COLUMN!
 	private void LSTDQ_OPTUpdate(double[][] currentFeature, double[][] successorFeature, boolean hasLost) {
+		// System.out.println("PRINTING FEATURES ########");
+		// Matrix.prettyPrintMatrix(currentFeature);
+		// Matrix.prettyPrintMatrix(successorFeature);
 		double[][] featureDifference = Matrix.matrixSum(currentFeature, Matrix.matrixScalarMultiply(successorFeature, -1*DISCOUNT), false, false);
 		double[][] featureDifferenceMultB = Matrix.matrixMultiply(featureDifference, B, false, false);
 		double[][] featureDifferenceMultBMultCurrentFeatures = Matrix.matrixMultiply(featureDifferenceMultB, currentFeature, false, true);
@@ -719,9 +729,9 @@ class Learner {
 	}
 
 	private double rewardFunction(double[][] successorFeature, boolean hasLost) {
-		if (hasLost) {
-			return LOST_REWARD;
-		}
+		// if (hasLost) {
+		// 	return LOST_REWARD;
+		// }
 		double lineCleared = successorFeature[0][FeatureFunction.INDEX_NUM_ROWS_REMOVED];
 		// if (lineCleared <= 1) {
 		// 	return 0;
@@ -737,6 +747,9 @@ class Learner {
 		double[][] weightVector = Matrix.matrixMultiply(B, b, false, false);
 		this.prevWeights = this.weights;
 		this.weights = colVectorToArray(weightVector);
+		// System.out.println("DIFFERENCE OF PREV AND WEIGHT: "+difference(prevWeights, weights));
+		// System.out.println(Arrays.toString(prevWeights));
+		// System.out.println(Arrays.toString(weights));
 	}
 
 	// Column vectors are vectors of mX1
