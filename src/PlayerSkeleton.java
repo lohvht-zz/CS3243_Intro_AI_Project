@@ -1,8 +1,14 @@
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.List;
 
 public class PlayerSkeleton {
 	FeatureFunction f = new FeatureFunction();
@@ -55,12 +61,29 @@ public class PlayerSkeleton {
 	}
 
 	public static void runGames(int numGames) {
+		ExecutorService executor = Executors.newFixedThreadPool(20);
+		Callable<Double> runGame = () -> {
+			return playGame();
+		};
+		List<Callable<Double>> gamesToRun = new ArrayList<>();
+
+		for (int i = 0; i < numGames; i++) {
+			gamesToRun.add(runGame);
+		}
+		
 		double sum = 0;
 		double score = 0;
-		for (int i = 0; i < numGames; i++) {
-			score = playGame();
-			sum += score;
-			System.out.println(i+ " " + score);
+		try {
+			List<Future<Double>> results = executor.invokeAll(gamesToRun);
+			for(Future<Double> result: results) {
+				score = result.get();
+				sum += score;
+				System.out.println(score);
+			}
+		} catch (InterruptedException ie) {
+			System.out.println("Interrupted games!");
+		} catch (ExecutionException ex) {
+			ex.printStackTrace();
 		}
 		double averageScore = sum / numGames;
 		System.out.println("You have completed " + averageScore + " rows on the average.");
@@ -563,7 +586,7 @@ class Learner {
 	* where currentFeatures, successorFeatures are kx1 vectors representing the feature array
 	*/
 	private static final double DISCOUNT = 0.9;
-	private static final double STOPPING_CRITERION = 0.01;
+	private static final double STOPPING_CRITERION = 0.005;
 	private static final double _P = 1.0/7.0;
 
 	private double[][] B;
@@ -684,9 +707,10 @@ class Learner {
 		prevWeights = new double[FeatureFunction.NUM_FEATURES];
 
 		if(_startWeights == null) {
-			for (int i = 0; i < weights.length; i++) {
-				weights[i] = (rand.nextBoolean()) ? rand.nextDouble() : -1 * rand.nextDouble();
-			}
+			// Let weights start from 0
+			// for (int i = 0; i < weights.length; i++) {
+			// 	weights[i] = (rand.nextBoolean()) ? rand.nextDouble() : -1 * rand.nextDouble();
+			// }
 		} else {
 			System.arraycopy(_startWeights, 0, weights, 0, _startWeights.length);
 		}
@@ -709,6 +733,7 @@ class Learner {
 				bw.write("Count: "+count+" ");
 				bw.write(weightsToString());
 				bw.newLine();
+				bw.flush();
 				count++;
 				if (count >= limit) {
 					break;
@@ -770,7 +795,7 @@ class Learner {
 		// if(successorState.hasLost()) {
 		// 	return -1000;
 		// }
-		return  successorState.getRowsCleared() - successorState.getOState().getRowsCleared();
+		return successorState.getRowsCleared() - successorState.getOState().getRowsCleared();
 	}
 
 	// Column vectors are vectors of mX1
@@ -803,6 +828,11 @@ class Learner {
 		try {
 			sampleSize = Integer.parseInt(args[3]);
 		} catch (Exception e) {}
+		boolean usePredefinedWeights = false;
+		try {
+			usePredefinedWeights = args[4].equals("y") ? true : false;
+		} catch (Exception e) {}
+
 
 		double[] startingWeights =
 		{
@@ -818,6 +848,9 @@ class Learner {
 			-0.0117935, // INDEX_TOTAL_WELL_DEPTH
 			1.00, // INDEX_HAS_LOST
 		};
+		if (!usePredefinedWeights) {
+			startingWeights = null;
+		}
 
 		learner.LSPI(isPlayLearning, limit, sampleSize, filename, startingWeights);
 		System.out.println("=================FINAL=====================");
