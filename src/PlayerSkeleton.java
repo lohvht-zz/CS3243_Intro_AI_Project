@@ -3,13 +3,26 @@ import java.util.Arrays;
 import java.util.Random;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
-import java.text.DecimalFormat;
-import java.text.NumberFormat;
 
 public class PlayerSkeleton {
 	FeatureFunction f = new FeatureFunction();
-	double[] weights = 
-		{ -0.00134246, -0.01414993, -0.00659672, 0.00140868, -0.02396361, -0.03055654, -0.06026152, -0.02105507, -0.0340038, -0.0117935 };
+	double[] weights =
+	// Average score over 100 games ==> 847094.92 rows cleared
+	// Highest cleared ===> 3,727,291
+	{
+		0.00134246,	// INDEX_NUM_ROWS_REMOVED
+		-0.01414993, // INDEX_MAX_HEIGHT
+		-0.00659672, // INDEX_AV_HEIGHT
+		0.00140868, // INDEX_AV_DIFF_HEIGHT
+		-0.02396361, // INDEX_LANDING_HEIGHT
+		-0.03055654, // INDEX_NUM_HOLES
+		-0.06026152, // INDEX_COL_TRANSITION
+		-0.02105507, // INDEX_ROW_TRANSITION
+		-0.0340038, // INDEX_COVERED_GAPS
+		-0.0117935, // INDEX_TOTAL_WELL_DEPTH
+		1.00, // INDEX_HAS_LOST, after implementing this, score went up by a significant amount
+	};
+
 	NState nextState = new NState();
 	double[] featureValues = null;
 
@@ -34,6 +47,28 @@ public class PlayerSkeleton {
 
 	public static double playGame() {
 		State s = new State();
+		PlayerSkeleton p = new PlayerSkeleton();
+		while (!s.hasLost()) {
+			s.makeMove(p.pickMove(s, s.legalMoves()));
+		}
+		return s.getRowsCleared();
+	}
+
+	public static void runGames(int numGames) {
+		double sum = 0;
+		double score = 0;
+		for (int i = 0; i < numGames; i++) {
+			score = playGame();
+			sum += score;
+			System.out.println(i+ " " + score);
+		}
+		double averageScore = sum / numGames;
+		System.out.println("You have completed " + averageScore + " rows on the average.");
+	}
+	
+	public static void main(String[] args) {
+		// runGames(100);
+		State s = new State();
 		new TFrame(s);
 		PlayerSkeleton p = new PlayerSkeleton();
 		while (!s.hasLost()) {
@@ -47,38 +82,26 @@ public class PlayerSkeleton {
 				e.printStackTrace();
 			}
 		}
-		return s.getRowsCleared();
-	}
-	
-	public static void main(String[] args) {
-		int numGames = 1;
-		double sum = 0;
-		for(int i = 0; i < numGames; i++) {
-			sum += playGame();
-			System.out.println(i);
-		}
-		double averageScore = sum/numGames;
-		System.out.println("You have completed " + averageScore + " rows on the average.");
-		// StateGenerator sg = new StateGenerator();
-		// sg.generateState(20);
-		// sg.generatePseudoBestState(20);
+		System.out.println("You have completed " + s.getRowsCleared() + " rows.");
 	}
 }
 
-// Helper Class to calculate the value function or Q function, with a given state/action
 class FeatureFunction {
 	private static int countFeatures = 0;
 	// Indexes of the feature array values
 	public static final int INDEX_NUM_ROWS_REMOVED = countFeatures++;
 	public static final int INDEX_MAX_HEIGHT = countFeatures++;
-	public static final int INDEX_AV_HEIGHT = countFeatures++;
-	public static final int INDEX_AV_DIFF_HEIGHT = countFeatures++;
+	// public static final int INDEX_AV_HEIGHT = countFeatures++;
+	// public static final int INDEX_AV_DIFF_HEIGHT = countFeatures++;
+	public static final int INDEX_TOTAL_HEIGHT = countFeatures++;
+	public static final int INDEX_TOTAL_DIFF_HEIGHT = countFeatures++;
 	public static final int INDEX_LANDING_HEIGHT = countFeatures++;
 	public static final int INDEX_NUM_HOLES = countFeatures++;
 	public static final int INDEX_COL_TRANSITION = countFeatures++;
 	public static final int INDEX_ROW_TRANSITION = countFeatures++;
 	public static final int INDEX_COVERED_GAPS = countFeatures++;
 	public static final int INDEX_TOTAL_WELL_DEPTH = countFeatures++;
+	public static final int INDEX_HAS_LOST = countFeatures++;
 
 	public static final int NUM_FEATURES = countFeatures;
 
@@ -93,8 +116,10 @@ class FeatureFunction {
 		double[] columnFeatures = getColumnFeatures(nextState);
 		features[INDEX_NUM_ROWS_REMOVED] = getRowsRemoved(nextState);
 		features[INDEX_MAX_HEIGHT] = columnFeatures[0];
-		features[INDEX_AV_HEIGHT] = columnFeatures[1];
-		features[INDEX_AV_DIFF_HEIGHT] = columnFeatures[2];
+		// features[INDEX_AV_HEIGHT] = columnFeatures[1];
+		// features[INDEX_AV_DIFF_HEIGHT] = columnFeatures[2];
+		features[INDEX_TOTAL_HEIGHT] = columnFeatures[1];
+		features[INDEX_TOTAL_DIFF_HEIGHT] = columnFeatures[2];
 		features[INDEX_LANDING_HEIGHT] = getLandingHeight(nextState);
 		double[] holesTransitions = getHolesTransitionsCoveredGaps(nextState);
 		features[INDEX_NUM_HOLES] = holesTransitions[0];
@@ -102,15 +127,16 @@ class FeatureFunction {
 		features[INDEX_ROW_TRANSITION] = holesTransitions[2];
 		features[INDEX_COVERED_GAPS] = holesTransitions[3];
 		features[INDEX_TOTAL_WELL_DEPTH] = getWellDepths(nextState);
+		features[INDEX_HAS_LOST] = getHasLost(nextState);
 		return features;
 	}
 
 	/**
 	* MAX HEIGHT:
 	* 		Height of the tallest column
-	* AV HEIGHT:
+	* TOTAL HEIGHT:
 	* 		Average height of all columns
-	* DIFF HEIGHT:
+	* TOTAL DIFF HEIGHT:
 	* 		Average height difference of all adjacent columns
 	*/
 	public double[] getColumnFeatures(NState state) {
@@ -124,8 +150,7 @@ class FeatureFunction {
 			totalDiffHeight += (i > 0) ? Math.abs(top[i] - top[i - 1]) : 0;
 			maxHeight = Math.max(maxHeight, top[i]);
 		}
-		double[] result = { maxHeight, ((double) totalHeight) / State.COLS,
-			((double) totalDiffHeight) / (State.COLS - 1) };
+		double[] result = { maxHeight, (double) totalHeight, (double) totalDiffHeight };
 		return result;
 	}
 
@@ -147,10 +172,10 @@ class FeatureFunction {
 		int pieceWidth = State.getpWidth()[piece][orient];
 		int[][][] pTop = State.getpTop();
 
-		int maxLandingHeight = -Integer.MAX_VALUE;
+		double maxLandingHeight = -Double.MAX_VALUE;
 
 		for (int c = 0; c < pieceWidth; c++) {
-			int currentLandingHeight = top[slot + c] + pTop[piece][orient][c] / 2;
+			double currentLandingHeight = top[slot + c] + (double)pTop[piece][orient][c] / 2.0;
 			if (currentLandingHeight > maxLandingHeight) {
 				maxLandingHeight = currentLandingHeight;
 			}
@@ -265,10 +290,14 @@ class FeatureFunction {
 			// Take the shorter of
 			int wellDepth = Math.min(left, right) - top[i];
 			if (wellDepth > 0) {
-				totalSum += (wellDepth * (wellDepth + 1)) / 2;
+				totalSum += (wellDepth * (double)(wellDepth + 1)) / 2.0;
 			}
 		}
 		return totalSum;
+	}
+
+	public double getHasLost(NState state) {
+		return (state.hasLost()) ? -10000 : 100;
 	}
 
 	public double calculateValue(double[] featureValues, double[] weight) {
@@ -361,12 +390,6 @@ class NState extends State {
 	public void makeMove(int move) {
 		this.setCurrentAction(move);
 		makeMove(legalMoves[nextPiece][move]);
-	}
-
-	public void makeRandomMove() {
-		Random rand = new Random(System.nanoTime());
-		this.makeMove(rand.nextInt(this.legalMoves().length));
-		this.setNextPiece(rand.nextInt(State.N_PIECES));
 	}
 
 	//returns false if you lose - true otherwise
@@ -539,10 +562,9 @@ class Learner {
 	* 
 	* where currentFeatures, successorFeatures are kx1 vectors representing the feature array
 	*/
-	private static double DISCOUNT = 0.9;
-	private static double STOPPING_CRITERION = 0.005;
-	private static double LOST_REWARD = -100000;
-	private static NumberFormat df = new DecimalFormat("###.########");
+	private static final double DISCOUNT = 0.9;
+	private static final double STOPPING_CRITERION = 0.01;
+	private static final double _P = 1.0/7.0;
 
 	private double[][] B;
 	private double[][] b;
@@ -552,141 +574,147 @@ class Learner {
 	private Random rand = new Random(System.nanoTime());
 
 	private FeatureFunction f = new FeatureFunction();
-	private NState nextState = new NState();
+	private NState _state = new NState();
+	private NState _statePrime = new NState();
 	
-	/**
-	* Run at the start of any LSTDQ update
-	*/
-	private void initBb() {
+
+	// returns the weight vector resulting from the LSTDQ update
+	private double[] LSTDQ(int sampleSize) {
+		int sampleNumber = 0;
 		B = new double[FeatureFunction.NUM_FEATURES][FeatureFunction.NUM_FEATURES];
 		b = new double[FeatureFunction.NUM_FEATURES][1];
 		for (int i = 0; i < FeatureFunction.NUM_FEATURES; i++) {
 			B[i][i] = 0.001;
 		}
-	}
 
-	// returns the weight vector resulting from the LSTDQ update
-	private void LSTDQ(int sampleSize) {
-		initBb();
-		int sampleNumber = 0;
-
-		double[][] currFeat = new double[1][];
-		double[][] bestSuccFeat = new double[1][];
-		int[][] legalMoves;
-		double maxValue;
-		double currentValue;
-		boolean bestMoveHasLost;
-
-		double percentageOfPseudoGoodStates = 0.7;
-
+		double percentageOfPseudoGoodStates = 0.8;
 		while(sampleNumber < sampleSize) {
-			int generatingMoves = rand.nextInt(20) + 1;
+			int generatingMoves = rand.nextInt(50) + 1;
 			NState state = (rand.nextDouble() <= percentageOfPseudoGoodStates)
 				? StateGenerator.generatePseudoBestState(generatingMoves)
 				: StateGenerator.generateState(generatingMoves);
-			// Fixes the -1 index error, also will generate a next piece
-			state.makeRandomMove();
-			legalMoves = state.legalMoves();
-			currFeat[0] = f.getFeatureValues(state);
-			maxValue = -Double.MAX_VALUE;
-			currentValue = -Double.MAX_VALUE;
-			bestMoveHasLost = state.hasLost();
-			for(int move = 0; move < legalMoves.length; move++) {
-				nextState.copy(state);
-				nextState.makeMove(move);
-				double[] nextFeature = f.getFeatureValues(nextState);
-				currentValue = f.calculateValue(nextFeature, weights);
-				if (currentValue > maxValue) {
-					maxValue = currentValue;
-					bestSuccFeat[0] = nextFeature;
-					bestMoveHasLost = nextState.hasLost();
+
+			int[][] legalMoves = state.legalMoves();
+			for(int a = 0; a < legalMoves.length; a++) {
+				double[][] currentFeatures = new double[1][FeatureFunction.NUM_FEATURES];
+				double[][] successorFeatures = new double[1][FeatureFunction.NUM_FEATURES];
+
+				_state.copy(state);
+				_state.makeMove(a);
+				// If the state after making a move has lost, ignore and move to the next move
+				if(_state.hasLost()) {
+					continue;
 				}
+				currentFeatures[0] = f.getFeatureValues(_state);
+				double[][] phiPrime = new double[1][FeatureFunction.NUM_FEATURES];;
+				double reward = 0;
+				for(int piece = 0; piece < State.N_PIECES; piece++) {
+					_state.setNextPiece(piece);
+					_statePrime.copy(_state);
+					// This is the best move from the current policy
+					int bestMove = pickBestMove(_statePrime, weights);
+					_statePrime.makeMove(bestMove);
+					phiPrime[0] = f.getFeatureValues(_statePrime);
+					successorFeatures = Matrix.matrixSum(successorFeatures, phiPrime, false, false);
+					reward += rewardFunction(_statePrime);
+				}
+				// multiply the probabilty inside the sum of rewards for s' and pi(s')
+				// and also the successorFeatures
+				reward *= _P;
+				successorFeatures = Matrix.matrixScalarMultiply(successorFeatures, _P);
+				LSTDQ_OPTUpdate(currentFeatures, successorFeatures, reward);
 			}
-			LSTDQ_OPTUpdate(currFeat, bestSuccFeat, bestMoveHasLost);
 			sampleNumber++;
 		}
-		// System.out.println("Respective B b matrices");
-		// Matrix.prettyPrintMatrix(B);
-		// Matrix.prettyPrintMatrix(b);
-		extractAndUpdateWeights();
+		return extractWeightVectorLSTDQ_OPT();
 	}
 
-	double[][] lstdqPlayCurrentFeature;
 	/**
-	 * Plays a game while running the LSTDQ Algorithm, returns the score for that game
+	 * Plays a game while running the LSTDQ Algorithm
 	 */
-	private int LSTDQPlay() {
-		initBb();
-		lstdqPlayCurrentFeature = new double[1][FeatureFunction.NUM_FEATURES];
+	private double[] LSTDQPlay() {
+		B = new double[FeatureFunction.NUM_FEATURES][FeatureFunction.NUM_FEATURES];
+		b = new double[FeatureFunction.NUM_FEATURES][1];
+		for (int i = 0; i < FeatureFunction.NUM_FEATURES; i++) {
+			B[i][i] = 0.001;
+		}
+		double[][] currentFeatures = new double[1][FeatureFunction.NUM_FEATURES];
+		double[][] successorFeatures = new double[1][FeatureFunction.NUM_FEATURES];
 		State s = new State();
 		while (!s.hasLost()) {
-			s.makeMove(playPickBestMove(s, s.legalMoves()));
+			int bestMove = pickBestMove(s, weights);
+			_statePrime.copy(s);
+			_statePrime.makeMove(bestMove);
+			successorFeatures[0] = f.getFeatureValues(_statePrime);
+			double reward = rewardFunction(_statePrime);
+			LSTDQ_OPTUpdate(currentFeatures, successorFeatures, reward);
+			System.arraycopy(successorFeatures[0], 0, currentFeatures[0], 0, FeatureFunction.NUM_FEATURES);
+			// Actually make the move to go to the next turn
+			s.makeMove(bestMove);
 		}
-		// if lost
-		extractAndUpdateWeights();
-		return s.getRowsCleared();
+		System.out.print("Score is: "+s.getRowsCleared() + " ");
+		return extractWeightVectorLSTDQ_OPT();
 	}
 
-	public int playPickBestMove(State s, int[][] legalMoves) {
+	public int pickBestMove(State s, double[] wArray) {
+		int[][] legalMoves = s.legalMoves();
+
 		int bestMove = 0;
+		NState nextState = new NState();
+		double[] features;
 		double maxValue = -Double.MAX_VALUE;
-		double currentValue = -Double.MAX_VALUE;
-		boolean bestMoveHasLost = s.hasLost();
+		double value;
 
-		double[][] bestSuccessorFeature = null;
-
-		for (int move = 0; move < legalMoves.length; move++) {
+		for(int move = 0; move < legalMoves.length; move++) {
 			nextState.copy(s);
 			nextState.makeMove(move);
-			// StateGenerator.printState(nextState);
-			if(bestSuccessorFeature == null) {
-				bestSuccessorFeature = new double[1][];
-				bestSuccessorFeature[0] = f.getFeatureValues(nextState);
-			}
-			double[] nextFeature = f.getFeatureValues(nextState);
-			currentValue = f.calculateValue(nextFeature, weights);
-			if (currentValue > maxValue) {
-				maxValue = currentValue;
+			features = f.getFeatureValues(nextState);
+			value = f.calculateValue(features, wArray);
+			if(value > maxValue) {
+				maxValue = value;
 				bestMove = move;
-				bestSuccessorFeature[0] = nextFeature;
-				bestMoveHasLost = nextState.hasLost();
 			}
 		}
-		LSTDQ_OPTUpdate(lstdqPlayCurrentFeature, bestSuccessorFeature, bestMoveHasLost);
-		lstdqPlayCurrentFeature[0] = bestSuccessorFeature[0];
 		return bestMove;
 	}
 
-	// start with random current weights
+	double minDifference = Double.MAX_VALUE;
 	public double[] LSPI(boolean isPlayLearning, int limit, int sampleSize, String filename, double[] _startWeights) {
 		weights = new double[FeatureFunction.NUM_FEATURES];
 		prevWeights = new double[FeatureFunction.NUM_FEATURES];
-		for(int i = 0; i < weights.length; i++) {
-			if(_startWeights == null) {
+
+		if(_startWeights == null) {
+			for (int i = 0; i < weights.length; i++) {
 				weights[i] = (rand.nextBoolean()) ? rand.nextDouble() : -1 * rand.nextDouble();
-			} else {
-				weights[i] = _startWeights[i];
 			}
+		} else {
+			System.arraycopy(_startWeights, 0, weights, 0, _startWeights.length);
 		}
+
 		int count = 0;
-		int score = -1;
+		double difference;
+		
 		try (BufferedWriter bw = new BufferedWriter(new FileWriter(String.format(filename)))) {
-			while (difference(prevWeights, weights) >= STOPPING_CRITERION) {
+			do {
+				System.arraycopy(weights, 0, prevWeights, 0, weights.length);
 				if (isPlayLearning) {
 					// plays a game, and updates
-					score = LSTDQPlay();
-					bw.write(score + " : ");
+					weights = LSTDQPlay();
 				} else {
-					LSTDQ(sampleSize);
+					weights = LSTDQ(sampleSize);
 				}
-				System.out.printf("The difference is: %f, of count %d.\n", difference(prevWeights, weights), count);
+				difference = difference(prevWeights, weights);
+				minDifference = Math.min(difference, minDifference);
+				System.out.printf("The difference is: %f, of count %d.\n", difference, count);
+				bw.write("Count: "+count+" ");
 				bw.write(weightsToString());
 				bw.newLine();
 				count++;
 				if (count >= limit) {
 					break;
 				}
-			}
+			} while (difference >= STOPPING_CRITERION);
+
 			bw.write("RESULT WEIGHTS AT: ");
 			bw.write(weightsToString());
 			bw.newLine();
@@ -710,46 +738,39 @@ class Learner {
 		return weightsLine.toString();
 	}
 
-	// Features coming in are of the form of 1xk vectors (i.e. row vectors) INSTEAD OF COLUMN!
-	private void LSTDQ_OPTUpdate(double[][] currentFeature, double[][] successorFeature, boolean hasLost) {
-		// System.out.println("PRINTING FEATURES ########");
-		// Matrix.prettyPrintMatrix(currentFeature);
-		// Matrix.prettyPrintMatrix(successorFeature);
-		double[][] featureDifference = Matrix.matrixSum(currentFeature, Matrix.matrixScalarMultiply(successorFeature, -1*DISCOUNT), false, false);
-		double[][] featureDifferenceMultB = Matrix.matrixMultiply(featureDifference, B, false, false);
-		double[][] featureDifferenceMultBMultCurrentFeatures = Matrix.matrixMultiply(featureDifferenceMultB, currentFeature, false, true);
+	// Features coming in are of the form of 1xk vectors (i.e. row vectors), do transpose them if using as column
+	private void LSTDQ_OPTUpdate(double[][] currentFeature, double[][] successorFeature, double reward) {
+		double[][] featureDifference = Matrix.matrixSum(
+			currentFeature,
+			Matrix.matrixScalarMultiply(successorFeature, -1.0*DISCOUNT),
+			false, false);
+		double[][] featureDifferenceMultB = Matrix.matrixMultiply(
+			featureDifference,
+			B,
+			false, false);
 		double[][] _BMultCurrentFeatures = Matrix.matrixMultiply(B, currentFeature, false, true);
-
 		double[][] stepB = Matrix.matrixMultiply(_BMultCurrentFeatures, featureDifferenceMultB, false, false);
-		double denominator = 1 + featureDifferenceMultBMultCurrentFeatures[0][0];
+		double denominator = 1 + Matrix.matrixMultiply(
+			featureDifferenceMultB,
+			currentFeature,
+			false, true)[0][0];
 		stepB = Matrix.matrixScalarMultiply(stepB, -1/denominator);
 		B = Matrix.matrixSum(B, stepB, false, false);
-		double reward = rewardFunction(successorFeature, hasLost);
 		b = Matrix.matrixSum(b, Matrix.matrixScalarMultiply(currentFeature, reward), false, true);
 	}
 
-	private double rewardFunction(double[][] successorFeature, boolean hasLost) {
-		// if (hasLost) {
-		// 	return LOST_REWARD;
-		// }
-		double lineCleared = successorFeature[0][FeatureFunction.INDEX_NUM_ROWS_REMOVED];
-		// if (lineCleared <= 1) {
-		// 	return 0;
-		// }
-		return lineCleared;
+	private double[] extractWeightVectorLSTDQ_OPT() {
+		double[][] weightVector = Matrix.matrixMultiply(B, b, false, false);
+		// Matrix.prettyPrintMatrix(B);
+		// Matrix.prettyPrintMatrix(b);
+		return colVectorToArray(weightVector);
 	}
 
-	/**
-	 * Updates the weights, assuming if an inverse for A can be found
-	 */
-	private void extractAndUpdateWeights() {
-		// this should be a Kx1 column vector, where K is the number of features
-		double[][] weightVector = Matrix.matrixMultiply(B, b, false, false);
-		this.prevWeights = this.weights;
-		this.weights = colVectorToArray(weightVector);
-		// System.out.println("DIFFERENCE OF PREV AND WEIGHT: "+difference(prevWeights, weights));
-		// System.out.println(Arrays.toString(prevWeights));
-		// System.out.println(Arrays.toString(weights));
+	private double rewardFunction(NState successorState) {
+		// if(successorState.hasLost()) {
+		// 	return -1000;
+		// }
+		return  successorState.getRowsCleared() - successorState.getOState().getRowsCleared();
 	}
 
 	// Column vectors are vectors of mX1
@@ -773,7 +794,7 @@ class Learner {
 		Learner learner = new Learner();
 		
 		String filename = (args[0].length() != 0) ? args[0] : "weights_1.txt";
-		boolean isPlayLearning = (args[1] == "y") ? true : false;
+		boolean isPlayLearning = (args[1].equals("y")) ? true : false;
 		int limit = Integer.MAX_VALUE;
 		int sampleSize = 10000;
 		try {
@@ -783,12 +804,24 @@ class Learner {
 			sampleSize = Integer.parseInt(args[3]);
 		} catch (Exception e) {}
 
-		double[] startingWeights = { -0.01414993, -0.00659672, 0.00140868,
-			-0.02396361, -0.00134246, -0.03055654, -0.06026152,
-			-0.02105507, -0.0340038, -0.0117935 };
+		double[] startingWeights =
+		{
+			0.00134246,	// INDEX_NUM_ROWS_REMOVED
+			-0.01414993, // INDEX_MAX_HEIGHT
+			-0.00659672, // INDEX_AV_HEIGHT
+			0.00140868, // INDEX_AV_DIFF_HEIGHT
+			-0.02396361, // INDEX_LANDING_HEIGHT
+			-0.03055654, // INDEX_NUM_HOLES
+			-0.06026152, // INDEX_COL_TRANSITION
+			-0.02105507, // INDEX_ROW_TRANSITION
+			-0.0340038, // INDEX_COVERED_GAPS
+			-0.0117935, // INDEX_TOTAL_WELL_DEPTH
+			1.00, // INDEX_HAS_LOST
+		};
 
 		learner.LSPI(isPlayLearning, limit, sampleSize, filename, startingWeights);
-		System.out.println("FINAL WEIGHTS: ");
+		System.out.println("=================FINAL=====================");
+		System.out.println(Arrays.toString(learner.prevWeights));
 		System.out.println(Arrays.toString(learner.weights));
 	}
 }
@@ -824,6 +857,33 @@ class Matrix {
 			{4, 5, 0, 7},
 		};
 
+		double[][] testMatrix5 = {
+			{13, 4, 10},
+			{7, 8, 5},
+			{11, 12, 6},
+		};
+
+		double[][] testMatrix6 = {
+			{4, 5, 2, 14},
+			{3, 9, 6, 21},
+			{8, 10, 7, 28},
+			{1, 2, 9, 5},
+		};
+
+		double[][] identityMatrix3by3 = {
+			{1, 0, 0},
+			{0, 1, 0},
+			{0, 0, 1},
+		};
+
+		double[][] identityMatrix4by4 = {
+			{1, 0, 0, 0},
+			{0, 1, 0, 0},
+			{0, 0, 1, 0},
+			{0, 0, 0, 1},
+		};
+
+
 		System.out.println("Testing matrix multiplication 1");
 		double[][] resultMultiply1 = matrixMultiply(testMatrix1, testMatrix2, false, false);
 		prettyPrintMatrix(resultMultiply1);
@@ -843,6 +903,14 @@ class Matrix {
 		prettyPrintMatrix(testMatrix4);
 		gaussJordanElmination(testMatrix4);
 		prettyPrintMatrix(testMatrix4);
+
+		System.out.println("Testing Solving Matrix 1");
+		prettyPrintMatrix(solveMatrix(testMatrix5, identityMatrix3by3));
+
+		System.out.println("Testing Solving Matrix 2");
+		if(solveMatrix(testMatrix6, identityMatrix4by4) == null) {
+			System.out.println("Matrix is inverse!");
+		}
 	}
 
 	/**
@@ -922,6 +990,14 @@ class Matrix {
 			}
 		}
 		return isIdent;
+	}
+
+	public static double[][] getIdentityMatrix(int dimension){
+		double[][] identityMat = new double[dimension][dimension];
+		for(int i = 0; i < dimension; i++) {
+			identityMat[i][i] = 1;
+		}
+		return identityMat;
 	}
 
 	public static void prettyPrintMatrix(double[][] matrix) {
