@@ -9,25 +9,34 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.List;
+import java.util.Scanner;
 
 public class PlayerSkeleton {
 	FeatureFunction f = new FeatureFunction();
-	double[] weights =
-	// Average score over 100 games ==> 847094.92 rows cleared
-	// Highest cleared ===> 3,727,291
-	{
-		0.00134246,	// INDEX_NUM_ROWS_REMOVED
-		-0.01414993, // INDEX_MAX_HEIGHT
-		-0.00659672, // INDEX_AV_HEIGHT
-		0.00140868, // INDEX_AV_DIFF_HEIGHT
-		-0.02396361, // INDEX_LANDING_HEIGHT
-		-0.03055654, // INDEX_NUM_HOLES
-		-0.06026152, // INDEX_COL_TRANSITION
-		-0.02105507, // INDEX_ROW_TRANSITION
-		-0.0340038, // INDEX_COVERED_GAPS
-		-0.0117935, // INDEX_TOTAL_WELL_DEPTH
-		1.00, // INDEX_HAS_LOST, after implementing this, score went up by a significant amount
-	};
+	static final double[] defaultWeights =
+		// Average score over 100 games ==> 847094.92 rows cleared
+		// Highest cleared ===> 3,727,291
+		// {
+		// 	0.00134246, // INDEX_NUM_ROWS_REMOVED
+		// 	-0.01414993, // INDEX_MAX_HEIGHT
+		// 	-0.00659672, // INDEX_AV_HEIGHT
+		// 	0.00140868, // INDEX_AV_DIFF_HEIGHT
+		// 	-0.02396361, // INDEX_LANDING_HEIGHT
+		// 	-0.03055654, // INDEX_NUM_HOLES
+		// 	-0.06026152, // INDEX_COL_TRANSITION
+		// 	-0.02105507, // INDEX_ROW_TRANSITION
+		// 	-0.0340038, // INDEX_COVERED_GAPS
+		// 	-0.0117935, // INDEX_TOTAL_WELL_DEPTH
+		// 	1.00, // INDEX_HAS_LOST, after implementing this, score went up by a significant amount
+		// };
+		// New set of weights, not tested yet
+{
+	0.33929766269223116, 0.053503464682038135, -0.0456485547034322, 0.05041313325910819,
+	-0.23318694383412875, -0.412116764219526, -0.45671536641854565, -0.24534299076903557,
+	-0.46103332657951873, -0.16239754070203402, 0.38008686401433706
+};
+
+	double[] weights;
 
 	NState nextState = new NState();
 	double[] featureValues = null;
@@ -51,19 +60,54 @@ public class PlayerSkeleton {
 		return bestMove;
 	}
 
-	public static double playGame() {
+	// Use the default weight
+	PlayerSkeleton() {
+		weights = new double[defaultWeights.length];
+		System.arraycopy(defaultWeights, 0, weights, 0, defaultWeights.length);
+	}
+
+	PlayerSkeleton(double[] _weights) {
+		weights = new double[_weights.length];
+		System.arraycopy(_weights, 0, weights, 0, _weights.length);
+	}
+
+	/**
+	 * Plays the game until the end with the given weight vector
+	 * @param weights 	The weight vector passed in, if weight vector is null,
+	 * 					use the hardedcoded default weight
+	 */
+	public static double playGame(double[] weights) {
 		State s = new State();
-		PlayerSkeleton p = new PlayerSkeleton();
+		PlayerSkeleton p = (weights == null) ? new PlayerSkeleton() : new PlayerSkeleton(weights);
 		while (!s.hasLost()) {
 			s.makeMove(p.pickMove(s, s.legalMoves()));
 		}
 		return s.getRowsCleared();
 	}
 
-	public static void runGames(int numGames) {
-		ExecutorService executor = Executors.newFixedThreadPool(20);
-		Callable<Double> runGame = () -> {
-			return playGame();
+	/**
+	 * Plays the game until the end with the given weight vector
+	 * @param weights 	The weight vector passed in, if weight vector is null,
+	 * 					use the hardedcoded default weight
+	 * @param maxMoves	The maximum amount of moves allowed
+	 */
+	public static double playGame(double[] weights, int maxMoves) {
+		State s = new State();
+		PlayerSkeleton p = (weights == null) ? new PlayerSkeleton() : new PlayerSkeleton(weights);
+		while (!s.hasLost() && s.getTurnNumber() < maxMoves) {
+			s.makeMove(p.pickMove(s, s.legalMoves()));
+		}
+		return s.getRowsCleared();
+	}
+
+	public static double runGames(int numGames, double[] weights, int maxMoves) {
+		ExecutorService executor = Executors.newFixedThreadPool(numGames);
+		Callable<Double> runGame = (maxMoves <= 0)
+		? () -> {
+			return playGame(weights);
+		}
+		: () -> {
+			return playGame(weights, maxMoves);
 		};
 		List<Callable<Double>> gamesToRun = new ArrayList<>();
 
@@ -73,39 +117,50 @@ public class PlayerSkeleton {
 		
 		double sum = 0;
 		double score = 0;
+		double highScore = Double.MIN_VALUE;
+		double lowScore = Double.MAX_VALUE;
 		try {
 			List<Future<Double>> results = executor.invokeAll(gamesToRun);
 			for(Future<Double> result: results) {
 				score = result.get();
 				sum += score;
 				System.out.println(score);
+				highScore = Math.max(highScore, score);
+				lowScore = Math.min(lowScore, score);
 			}
 		} catch (InterruptedException ie) {
 			System.out.println("Interrupted games!");
+			executor.shutdown();
 		} catch (ExecutionException ex) {
 			ex.printStackTrace();
 		}
+		executor.shutdown();
 		double averageScore = sum / numGames;
-		System.out.println("You have completed " + averageScore + " rows on the average.");
+		System.out.println("High score: "+highScore+" Low Score: "+lowScore);
+		return averageScore;
 	}
 	
 	public static void main(String[] args) {
-		// runGames(100);
-		State s = new State();
-		new TFrame(s);
-		PlayerSkeleton p = new PlayerSkeleton();
-		while (!s.hasLost()) {
-			s.makeMove(p.pickMove(s, s.legalMoves()));
-			s.draw();
-			s.drawNext(0,0);
-			try {
-				// Thread.sleep(300); // Uncomment this to revert to normal sleep 300
-				Thread.sleep(0);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
-		System.out.println("You have completed " + s.getRowsCleared() + " rows.");
+		long startTime = System.currentTimeMillis();
+		double score = runGames(500, null, -1);
+		long totalTImeElapsed = (System.currentTimeMillis() - startTime)/1000;
+		System.out.println("Total time taken: "+ totalTImeElapsed+ " Average Score was: "+ score);
+
+		// Original Code provided
+		// State s = new State();
+		// new TFrame(s);
+		// PlayerSkeleton p = new PlayerSkeleton();
+		// while (!s.hasLost()) {
+		// 	s.makeMove(p.pickMove(s, s.legalMoves()));
+		// 	s.draw();
+		// 	s.drawNext(0,0);
+		// 	try {
+		// 		Thread.sleep(300);
+		// 	} catch (InterruptedException e) {
+		// 		e.printStackTrace();
+		// 	}
+		// }
+		// System.out.println("You have completed " + s.getRowsCleared() + " rows.");
 	}
 }
 
