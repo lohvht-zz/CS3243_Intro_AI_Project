@@ -13,28 +13,31 @@ import java.util.Scanner;
 
 public class PlayerSkeleton {
 	FeatureFunction f = new FeatureFunction();
+	// Out of 600 games
+	// 	25th Percentile: 4,000,932.25
+	// Median: 9,323,531.5
+	// 75th Percentile: 18,056,433.5
+	// Mean: 12,872,842.7867
+	// Highest: 70,106,597
+	// Lowest: 31,606
 	static final double[] defaultWeights =
-		// Average score over 100 games ==> 847094.92 rows cleared
-		// Highest cleared ===> 3,727,291
-		// {
-		// 	0.00134246, // INDEX_NUM_ROWS_REMOVED
-		// 	-0.01414993, // INDEX_MAX_HEIGHT
-		// 	-0.00659672, // INDEX_AV_HEIGHT
-		// 	0.00140868, // INDEX_AV_DIFF_HEIGHT
-		// 	-0.02396361, // INDEX_LANDING_HEIGHT
-		// 	-0.03055654, // INDEX_NUM_HOLES
-		// 	-0.06026152, // INDEX_COL_TRANSITION
-		// 	-0.02105507, // INDEX_ROW_TRANSITION
-		// 	-0.0340038, // INDEX_COVERED_GAPS
-		// 	-0.0117935, // INDEX_TOTAL_WELL_DEPTH
-		// 	1.00, // INDEX_HAS_LOST, after implementing this, score went up by a significant amount
+		// { 
+		// 	0.27108678297658184, // INDEX_NUM_ROWS_REMOVED
+		// 	0.052210127461541356, // INDEX_MAX_HEIGHT
+		// 	-0.01175971153359219, // INDEX_AV_HEIGHT
+		// 	-9.362791850485086E-4, // INDEX_AV_DIFF_HEIGHT
+		// 	-0.22840826350913523, // INDEX_LANDING_HEIGHT
+		// 	-0.3074418797607427, // INDEX_NUM_HOLES
+		// 	-0.12518629866820255, // INDEX_COL_TRANSITION
+		// 	-0.17175759824362818, // INDEX_ROW_TRANSITION
+		// 	-0.7871385684504404, // INDEX_COVERED_GAPS
+		// 	-0.15907062512458905, // INDEX_TOTAL_WELL_DEPTH
+		// 	0.29307537483267665 // INDEX_HAS_LOST
 		// };
-		// New set of weights, not tested yet
-{
-	0.33929766269223116, 0.053503464682038135, -0.0456485547034322, 0.05041313325910819,
-	-0.23318694383412875, -0.412116764219526, -0.45671536641854565, -0.24534299076903557,
-	-0.46103332657951873, -0.16239754070203402, 0.38008686401433706
-};
+		// from row 13 trainer, need to evaluate the effectiveness
+		{ -0.10994115458466136, -0.1154697834187254, -0.04390525258236673, 0.017912908135268947,
+					-0.17018693844059846, -0.3044476707923254, -0.38617473506172584, -0.22806177833393343,
+					-0.7696058904564755, -0.19377750577164388, 0.13672271498097804 };
 
 	double[] weights;
 
@@ -79,8 +82,12 @@ public class PlayerSkeleton {
 	public static double playGame(double[] weights) {
 		State s = new State();
 		PlayerSkeleton p = (weights == null) ? new PlayerSkeleton() : new PlayerSkeleton(weights);
+		// Random random = new Random(System.nanoTime());
 		while (!s.hasLost()) {
 			s.makeMove(p.pickMove(s, s.legalMoves()));
+			// if (random.nextDouble() < 0.00001) {
+			// 	System.out.println("Score: " + s.getRowsCleared());
+			// }
 		}
 		return s.getRowsCleared();
 	}
@@ -141,26 +148,49 @@ public class PlayerSkeleton {
 	}
 	
 	public static void main(String[] args) {
-		long startTime = System.currentTimeMillis();
-		double score = runGames(500, null, -1);
-		long totalTImeElapsed = (System.currentTimeMillis() - startTime)/1000;
-		System.out.println("Total time taken: "+ totalTImeElapsed+ " Average Score was: "+ score);
+		// Scanner sc = new Scanner(System.in);
+		// int numGames = sc.nextInt();
+		// int numMoves = sc.nextInt();
+		// String weightString = sc.nextLine();
+		// double[] weights;
+		// if(weightString.equals("")) {
+		// 	String[] weightstringArray = weightString.split(",");
+		// 	weights = new double[FeatureFunction.NUM_FEATURES];
+		// 	for(int i = 0; i < weightstringArray.length; i++) {
+		// 		weights[i] = Double.parseDouble(weightstringArray[i].trim());
+		// 	}
+		// } else {
+		// 	weights = null;
+		// }
+		// if(weights != null) {
+		// 	System.out.println("Playing Games for this set of weights: ");
+		// 	System.out.println(Arrays.toString(weights));
+		// } else {
+		// 	System.out.println("Playing with hardcoded weights!");
+		// }
+		// int numGames = 1;
+		// int numMoves = -1;
+		// double[] weights = null;
+		// long startTime = System.currentTimeMillis();
+		// double score = runGames(numGames, weights, numMoves);
+		// long totalTImeElapsed = (System.currentTimeMillis() - startTime)/1000;
+		// System.out.println("Total time taken: "+ totalTImeElapsed+ " Average Score was: "+ score);
 
 		// Original Code provided
-		// State s = new State();
-		// new TFrame(s);
-		// PlayerSkeleton p = new PlayerSkeleton();
-		// while (!s.hasLost()) {
-		// 	s.makeMove(p.pickMove(s, s.legalMoves()));
-		// 	s.draw();
-		// 	s.drawNext(0,0);
-		// 	try {
-		// 		Thread.sleep(300);
-		// 	} catch (InterruptedException e) {
-		// 		e.printStackTrace();
-		// 	}
-		// }
-		// System.out.println("You have completed " + s.getRowsCleared() + " rows.");
+		State s = new State();
+		new TFrame(s);
+		PlayerSkeleton p = new PlayerSkeleton();
+		while (!s.hasLost()) {
+			s.makeMove(p.pickMove(s, s.legalMoves()));
+			s.draw();
+			s.drawNext(0,0);
+			try {
+				Thread.sleep(300);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		System.out.println("You have completed " + s.getRowsCleared() + " rows.");
 	}
 }
 
