@@ -13,7 +13,8 @@ import java.util.Scanner;
 
 public class PlayerSkeleton {
 	FeatureFunction f = new FeatureFunction();
-	// Out of 600 games
+	// Out of 600 games (trained with board of max 9 rows: "Converged"
+	// at generation 464)
 	// 25th Percentile: 4,000,932.25
 	// Median: 9,323,531.5
 	// 75th Percentile: 18,056,433.5
@@ -35,7 +36,8 @@ public class PlayerSkeleton {
 		// 	0.29307537483267665 // INDEX_HAS_LOST
 		// };
 
-		// NEW set of weights row 13 trainer:
+		// NEW set of weights row 13 trainer (trained with board of max 13 rows:
+		// Not converged yet at 132!:
 		// Out of 600 games
 		// 25th Percentile: 6,307,657.5
 		// Median: 13,655,622
