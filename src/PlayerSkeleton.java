@@ -14,7 +14,7 @@ import java.util.Scanner;
 public class PlayerSkeleton {
 	FeatureFunction f = new FeatureFunction();
 	// Out of 600 games
-	// 	25th Percentile: 4,000,932.25
+	// 25th Percentile: 4,000,932.25
 	// Median: 9,323,531.5
 	// 75th Percentile: 18,056,433.5
 	// Mean: 12,872,842.7867
@@ -34,10 +34,28 @@ public class PlayerSkeleton {
 		// 	-0.15907062512458905, // INDEX_TOTAL_WELL_DEPTH
 		// 	0.29307537483267665 // INDEX_HAS_LOST
 		// };
-		// from row 13 trainer, need to evaluate the effectiveness
-		{ -0.10994115458466136, -0.1154697834187254, -0.04390525258236673, 0.017912908135268947,
-					-0.17018693844059846, -0.3044476707923254, -0.38617473506172584, -0.22806177833393343,
-					-0.7696058904564755, -0.19377750577164388, 0.13672271498097804 };
+
+		// NEW set of weights row 13 trainer:
+		// Out of 600 games
+		// 25th Percentile: 6,307,657.5
+		// Median: 13,655,622
+		// 75th Percentile: 25,716,898.5
+		// Mean: 19,793,958.20
+		// Highest: 216,319,742
+		// Lowest: 5125
+		{
+			-0.10994115458466136,
+			-0.1154697834187254,
+			-0.04390525258236673,
+			0.017912908135268947,
+			-0.17018693844059846,
+			-0.3044476707923254,
+			-0.38617473506172584,
+			-0.22806177833393343,
+			-0.7696058904564755,
+			-0.19377750577164388,
+			0.13672271498097804
+		};
 
 	double[] weights;
 
@@ -178,17 +196,17 @@ public class PlayerSkeleton {
 
 		// Original Code provided
 		State s = new State();
-		new TFrame(s);
+		// new TFrame(s);
 		PlayerSkeleton p = new PlayerSkeleton();
 		while (!s.hasLost()) {
 			s.makeMove(p.pickMove(s, s.legalMoves()));
-			s.draw();
-			s.drawNext(0,0);
-			try {
-				Thread.sleep(300);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
+			// s.draw();
+			// s.drawNext(0,0);
+			// try {
+			// 	Thread.sleep(300);
+			// } catch (InterruptedException e) {
+			// 	e.printStackTrace();
+			// }
 		}
 		System.out.println("You have completed " + s.getRowsCleared() + " rows.");
 	}
