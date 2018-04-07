@@ -166,6 +166,24 @@ public class PlayerSkeleton {
 		System.out.println("High score: "+highScore+" Low Score: "+lowScore);
 		return averageScore;
 	}
+
+	public static double runGamesSequential(int numGames, double[] weights, int numMoves) {
+		double sum = 0;
+		double score = 0;
+		double highScore = Double.MIN_VALUE;
+		double lowScore = Double.MAX_VALUE;
+
+		for (int i = 0; i < numGames; i++) {
+			score = playGame(weights);
+			sum += score;
+			System.out.println(score);
+			highScore = Math.max(highScore, score);
+			lowScore = Math.min(lowScore, score);
+		}
+		double averageScore = sum / numGames;
+		System.out.println("High score: " + highScore + " Low Score: " + lowScore);
+		return averageScore;
+	}
 	
 	public static void main(String[] args) {
 		// Scanner sc = new Scanner(System.in);
@@ -198,7 +216,7 @@ public class PlayerSkeleton {
 
 		// Original Code provided
 		State s = new State();
-		// new TFrame(s);
+		new TFrame(s);
 		PlayerSkeleton p = new PlayerSkeleton();
 		while (!s.hasLost()) {
 			s.makeMove(p.pickMove(s, s.legalMoves()));

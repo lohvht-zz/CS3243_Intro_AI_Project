@@ -106,14 +106,21 @@ meant that as the weights progressively got better, each generation started
 taking a longer time to evaulate.\\
 
 We decided to parallelise the games by running each game on its own thread. Playing
-100 games, with a set of weights that give around <SCORE> lines cleared, the
-speedup from sequential to parallelised is <TIMES>.\\
+100 games each, with a set of decent set of weights
+\footnote{
+    weight vector used w = [0.00134246, $-0.01414993$, $-0.00659672$, 0.00140868, $-0.02396361$, $-0.03055654$, $-0.06026152$, $-0.02105507$, $-0.0340038$, $-0.0117935$, 1]
+    played over 200 games in total, 100 games sequentially and 100 games in parallel, with a total average score of 841279
+}
+, the time taken for the parallelised version was 2059 seconds while the
+sequential version was 6897, giving a speedup of 3.34 times.\\  
 
 Another way that we have tried speeding up the learning algorithm was to simply
 reduce the number of rows that the board has. Our team ran 2 instances of the
-learning algorithm with a smaller board of 9 rows and 13 rows. The instance
+learning algorithm with a smaller board of 9 rows and 13 rows respectively. The instance
 running with 9 rows, even at later generations, took an average of 30 minutes per
-generation, while the latter, took an average of 4 hours per generation.
+generation, while the latter, took an average of 4 hours per generation.\\
+
+The used for the training and running all the above tests was <SPEC OF NUS CLUSTER SERVER USED>
 
 \section{Results}
 The following results are from the weights shown in Table \ref{feature_weights}.
@@ -185,6 +192,27 @@ while some common metrics of the 600 games can be seen on Table \ref{metric_scor
 	\label{metric_scores}
 \end{table}
 
-As we can see from the results above, 
+As we can see from the result, most of the games played lie below 30 million lines
+cleared. However we do see a few outliers that broke 50 million lines cleared, including
+our best run at 216,319,742 lines cleared.
+
+\section{Discussion and Findings}
+The choice of features used within the utility function was extremely important.
+We initially implemented our most of our original set of features without HAS\_LOST,
+because of how well these features had worked in previous works of tetris playing
+agents, such as the Tetris applications by Colin Fahey and Pierre Dellacherie \cite{colin_fahey}.\\
+
+However, most of the features as shown above does not take the next move as a win
+or loss directly, therefore an important characteristic of the board has not been captured.
+Implementing HAS\_LOST forces our agent against making a losing move, if there
+are other moves that can prolong the game.
+
+\section{Conclusion}
+
+
+\begin{thebibliography}{9}
+    \bibitem{colin_fahey}
+    Colin P. Fahey, Tetris AI, 2003 \\\texttt{https://www.colinfahey.com/tetris/tetris.html}
+\end{thebibliography}
 
 \end{document}
