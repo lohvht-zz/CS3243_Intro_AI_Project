@@ -17,7 +17,8 @@
 % remove all indents from new paragraphs
 \setlength{\parindent}{0pt}
 
-\title{Growing with Big Data, A Tetris Player: Project Report by Group 22}
+\title{Growing with Big Data, A Tetris Player: Project Report by Group 22 
+\footnote{Contributions are weighed by the opacity of the author's name}}
 \author{\bf{Loh Han Tong, Victor} \\ A0135808B
     \and \bf{Ryan Tan Wen Jun} \\ AxxxxxxxZ \and \bf {Tan Yu Wei} \\ AxxxxxxxZ
     \and \bf\transparent{0.1}{Li Jiaxin Cassandra} \\ \transparent{0.1}AxxxxxxxZ
@@ -120,7 +121,8 @@ learning algorithm with a smaller board of 9 rows and 13 rows respectively. The 
 running with 9 rows, even at later generations, took an average of 30 minutes per
 generation, while the latter, took an average of 4 hours per generation.\\
 
-The used for the training and running all the above tests was <SPEC OF NUS CLUSTER SERVER USED>
+The used for the training and running all the above tests was
+<PLEASE WRITE THE SPEC OF NUS CLUSTER SERVER USED, ITS NUS COMPUTING CLUSTER xgp0>
 
 \section{Results}
 The following results are from the weights shown in Table \ref{feature_weights}.
@@ -204,15 +206,36 @@ agents, such as the Tetris applications by Colin Fahey and Pierre Dellacherie \c
 
 However, most of the features as shown above does not take the next move as a win
 or loss directly, therefore an important characteristic of the board has not been captured.
-Implementing HAS\_LOST forces our agent against making a losing move, if there
-are other moves that can prolong the game.
+Implementing HAS\_LOST discourages our agent from making a losing move if there are
+other moves available that will prolong the game.\\
+
+<APPEND MORE AND COMPLETE THIS SECTION!!!! THIS IS THE LAST STRETCH!!>
 
 \section{Conclusion}
+Our aim in this paper was to show we can use Genetic Algorithm to apply to strategies
+in terms of weights to our feature-based utility function to evaluate the best moves.
+We have showed that the algorithm could settle at a good set of weights, despite
+not having a guarantee that each consecutive generation would improve. The set of weights
+that we have derived based on these features could then be used in as a starting point
+in another algorithm in order to learn the optimal weights. One example may be Least
+Square Policy Iteration by Lagoudakis and Parr \cite{lagoudakis}, of which our Tetris
+problem could be tailored to fit a control problem as stated by Lagoudakis.\\
 
+We also think that in order to design a utility based agent that could play well,
+we should not only rely optimising the weights for a set of features, but we should
+also choose good features as well. As discussed above, having a set of features
+that could better represent the state of the game results in an agent that
+could potentiall play better. Perhaps another interesting area to research would
+be looking into creating algorithms that could optimise and learn new features
+of the board state, and thus the utility function, instead of only its weights.
 
 \begin{thebibliography}{9}
     \bibitem{colin_fahey}
-    Colin P. Fahey, Tetris AI, 2003 \\\texttt{https://www.colinfahey.com/tetris/tetris.html}
+    Colin P. Fahey, Tetris AI, 2003\\https://www.colinfahey.com/tetris/tetris.html
+    
+    \bibitem{lagoudakis}
+    Michail G. Lagoudakis, Ronald Parr.
+    \textit{Journal of Machine Learning Research 4 (Dec), 1107-1149}, 2003
 \end{thebibliography}
 
 \end{document}
