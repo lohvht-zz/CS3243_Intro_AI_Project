@@ -211,12 +211,6 @@ result in a loss, therefore an important characteristic of the board has not bee
 Implementing HAS\_LOST discourages our agent from making losing moves if there are
 other available non-losing moves.\\
 
-With regards to the 2 instances of learners running on 9 and 13 rows respectively.
-We found that the learner on the 9x10 board has converged much faster than the
-learner on the 13x10 board. However, testing on a full sized 20x10 board with 600 games,
-the player trained on the larger board gave a higher mean score than the player
-trained on a smaller board, as can be seen in Table \ref{learner_comparison}.\\
-
 \begin{table}[h]
 	\centering
 	\begin{tabular}{|l|l|}
@@ -229,15 +223,21 @@ trained on a smaller board, as can be seen in Table \ref{learner_comparison}.\\
 		\hline
 	\end{tabular}
 	\caption{
-        Comparison of the final top weights of each learner after 9 rows learner
-        reached convergence
+		Comparison of the final top weights of each learner after 9 rows learner
+		reached convergence
 	}
 	\label{learner_comparison}
 \end{table}
 
-The speed up from every generational iteration may have lead to a set of weight that
-still plays decently well, but it may not be ideal for a full sized board. We think
-that learning on a smaller game board may be specialising the player for playing on
+With regards to the 2 instances of learners running on 9 and 13 rows respectively.
+We found that the learner on the 9x10 board has converged much faster than the
+learner on the 13x10 board. However, testing on a full sized 20x10 board with 600 games,
+the player trained on the larger board gave a higher mean score than the player
+trained on a smaller board, as can be seen in Table \ref{learner_comparison}.\\
+
+The apparent tradeoff for this speed up in convergence, is that the set of weights
+obtained are not ideal for a full sized board, though the player still plays well.
+We think that learning on a smaller game board may be specialising the player for playing on
 a smaller game board size but does not enable them to generalise to larger game board sizes.\\
 
 This illustrates the case that there exists a tradeoff between tweaking the size
