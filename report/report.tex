@@ -201,15 +201,31 @@ our best run at 216,319,742 lines cleared.
 
 \section{Discussion and Findings}
 \label{discussion_n_findings}
-The choice of features used within the utility function was extremely important.
-We initially implemented most of our original set of features without HAS\_LOST,
-because of how well these features had worked in previous works of tetris playing
-agents, such as the Tetris applications by Colin Fahey and Pierre Dellacherie \cite{colin_fahey}.\\
+Our group initially decided to use Least Square Policy Iteration (LSPI) by Lagoudakis \cite{lagoudakis},
+seeing as earlier CS3243 groups such as Tan et al \cite{shawntan} and Nguyen et al \cite{nhannguyen}
+had been able to get satisfactory results from it. However, the results that we have
+produced from our implementation of LSPI was not satisfactory, giving an average of
+at most 8,000 rows cleared.\\
 
-However, most of those features do not take in account of whether the next move will
-result in a loss, therefore an important characteristic of the board has not been captured.
-Implementing HAS\_LOST discourages our agent from making losing moves if there are
-other available non-losing moves.\\
+We speculated that there may have been an error in our implementation, but despite
+peer review, we were not able to rectify the issue. In a bid to try to improve our
+learnt weights, we tried implementing other features to better represent the state
+of the board. This was when our team realised the importance of the choice of features.\\
+
+We initially implemented our original set of features without HAS\_LOST. Most of which
+was taken from previous other works of tetris playing agents, such as the Tetris
+applications by Colin Fahey and Pierre Dellacherie \cite{colin_fahey}, because of
+how well these features had worked.\\
+
+However, our original set of features do not take in account of whether the next
+move will result in a loss, therefore an important characteristic of the board has
+not been captured. Implementing HAS\_LOST discourages our agent from making losing
+moves if there are other available non-losing moves.\\
+
+After implementing this feature, the number of rows cleared on the average increased
+from 8,000 to 80,000. Nonetheless, the results were still unsatisfactory and the team
+decided to change the implementation of the learner to use our own version of genetic
+algorithm instead.
 
 \begin{table}[h]
 	\centering
@@ -289,6 +305,12 @@ learn new features of the board state, and thus the utility function, instead
 of only its weights.
 
 \begin{thebibliography}{9}
+    \bibitem{shawntan}
+    Shawn Tan et al, \textit{Learning about reinforcement learning, with Tetris}, 2014\\https://blog.wtf.sg/2014/01/12/learning-about-reinforcement-learning-with-tetris/
+
+    \bibitem{nhannguyen}
+    Nhan Nguyen et al, \textit{Learning to Play Tetris with Big Data}, 2016\\https://github.com/ngthnhan/Tetris/blob/final/report.pdf
+
     \bibitem{colin_fahey}
     Colin P. Fahey, \textit{Tetris AI}, 2003\\https://www.colinfahey.com/tetris/tetris.html
     
