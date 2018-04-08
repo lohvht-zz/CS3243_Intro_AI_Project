@@ -133,7 +133,7 @@ above tests was <PLEASE WRITE THE SPEC OF NUS CLUSTER SERVER USED, ITS NUS COMPU
 \section{Results}
 The following results are from the weights shown in Table \ref{feature_weights}.
 These weights were derived from the genetic algorithm learner on a board with 13 rows
-at generation 132.
+at generation 132.\\
 
 \begin{table}[h]
     \begin{tabular}{|l|l|}
@@ -168,7 +168,7 @@ at generation 132.
 \end{table}
 
 The result of running 600 games can be seen in Figure \ref{score_histogram},
-while some common metrics of the 600 games can be seen on Table \ref{metric_scores}.
+while some common metrics of the 600 games can be seen on Table \ref{metric_scores}.\\
 
 \begin{figure}[h]
     \centering
@@ -231,7 +231,7 @@ there are other available non-losing moves.\\
 After implementing this feature, the number of rows cleared on the average increased
 from 8,000 to 80,000. Nonetheless, the results were still unsatisfactory and the team
 decided to change the implementation of the learner to use our own version of genetic
-algorithm instead.
+algorithm instead.\\
 
 \begin{table}[h]
 	\centering
@@ -282,8 +282,9 @@ time taken versus quality of weights learnt.\\
 
 Lastly, we can further parallelise the running of the genetic algorithm by distributing
 the fitness evaluation of each chromosome to separate machines in different
-clusters. This may decrease the computational time needed for each generation as the
-fitness evaluation for all chromosomes would now be running in parallel as well.
+clusters. This will decrease the computational time needed for each generation as the
+fitness evaluation for all chromosomes would now be running in parallel in different
+machines.
 
 \section{Conclusion}
 Our aim in this paper was to show we can use Genetic Algorithm to apply to strategies
@@ -295,19 +296,19 @@ in another algorithm in order to learn the optimal weights, such as LSPI, of whi
 Tetris problem could be be tailored to fit a control problem as stated by Lagoudakis \cite{lagoudakis}.\\
 
 We have shown that by reducing the size of the game board, we could still arrive at
-a set of weights that were decent. We have also discussed the tradeoff of reducing
+a set of weights that were decent. We discussed the tradeoff of reducing
 the size of the board, and the final weight's ability to generalise to larger
 board sizes. We also examined other ways to reduce the length of games and its
 possible implications on how generalisable the weights learnt at the end will be.\\
 
-We also think that in order to design a utility based agent that could play Tetris well,
-we should not only rely optimising the weights for a set of features, but we also
-need to good features as well. As discussed in Section \ref{discussion_n_findings},
-having a set of features that could better represent the state of the game results
-in an agent that could potential play better. Perhaps another interesting area
-to research would be looking into creating algorithms that could optimise and
-learn new features of the board state, and thus the utility function, instead
-of only its weights.
+As a final concluding point, we think that in order to design a utility based agent
+that could play Tetris well, we should not rely on only optimising the weights
+for a set of features, we should also be looking into selecting good features as well.
+As discussed in Section \ref{discussion_n_findings}, having a set of features that
+could better represent the state of the game, results in an agent that plays better.
+Perhaps another interesting area to research would be looking into creating algorithms
+that could optimise and learn new features of the board state, and thus the utility
+function, instead of just optimising its weights.\\
 
 \begin{thebibliography}{9}
     \bibitem{shawntan}
