@@ -695,7 +695,7 @@ class Chromosome implements Comparable<Chromosome> {
 	}
 
 	public void evaluateFitness(int games, int moves) {
-		// Run 100 games to set the fitness, of max moves 500, OR till they lost
+		// Run games to set the fitness
 		double score = PlayerSkeleton.runGames(games, this.getWeights(), moves);
 		this.setFitness(score);
 	}
