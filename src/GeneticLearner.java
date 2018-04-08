@@ -218,7 +218,7 @@ class Population {
 
     public boolean hasConverged() {
         /**
-         * TODO: hasConverged is now kept to false
+         * NOTE: hasConverged is now kept to false
          * this running the genetic algorithm indefinitely, but checking up on
          * the counter is also useful in telling us how much improvement is needed
          */
