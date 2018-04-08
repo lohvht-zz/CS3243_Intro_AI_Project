@@ -20,8 +20,8 @@
 \title{Growing with Big Data, A Tetris Player: Project Report by Group 22 
 \footnote{Contributions are weighed by the opacity of the author's name}}
 \author{\bf{Loh Han Tong, Victor} \\ A0135808B
-    \and \bf{Ryan Tan Wen Jun} \\ AxxxxxxxZ \and \bf {Tan Yu Wei} \\ AxxxxxxxZ
-    \and \bf\transparent{0.1}{Li Jiaxin Cassandra} \\ \transparent{0.1}AxxxxxxxZ
+    \and \bf{Ryan Tan Wen Jun} \\ A0135747X \and \bf {Tan Yu Wei} \\ A0142255M
+    \and \bf\transparent{0.05}{Li Jiaxin Cassandra} \\ \transparent{0.05}AxxxxxxxZ
 }
 \date{\today}
 \maketitle
@@ -102,6 +102,7 @@ Convergence is determined by the score of the best individual in the population.
 If this score has not improved for 50 generations, we terminate the algortihm.
 
 \subsection{Parallelisation and Speedup}
+\label{parallelisation_n_speedup}
 Each generation of the algorithm required running games to evaluate fitness. This
 meant that as the weights progressively got better, each generation started
 taking a longer time to evaulate.\\
@@ -113,20 +114,20 @@ We decided to parallelise the games by running each game on its own thread. Play
     played over 200 games in total, 100 games sequentially and 100 games in parallel, with a total average score of 841279
 }
 , the time taken for the parallelised version was 2059 seconds while the
-sequential version was 6897, giving a speedup of 3.34 times.\\  
+sequential version was 6897, giving a speedup of 3.34 times.\\
 
-Another way that we have tried speeding up the learning algorithm was to simply
-reduce the number of rows that the board has. Our team ran 2 instances of the
-learning algorithm with a smaller board of 9 rows and 13 rows respectively. The instance
-running with 9 rows, even at later generations, took an average of 30 minutes per
-generation, while the latter, took an average of 4 hours per generation.\\
+Another way that we have tried speeding up the learning algorithm was to reduce
+the size of the board by reducing its height. Our team ran 2 different learners,
+one learning on a 9x10 board, while the other learning on a 13x10 board.
+The learner with 9 rows, even at later generations, took an average of 30 minutes
+per generation, while the latter, took an average of 4 hours per generation.\\
 
-The used for the training and running all the above tests was
-<PLEASE WRITE THE SPEC OF NUS CLUSTER SERVER USED, ITS NUS COMPUTING CLUSTER xgp0>
+The machine used for the training and learning the weights, and running all the
+above tests was <PLEASE WRITE THE SPEC OF NUS CLUSTER SERVER USED, ITS NUS COMPUTING CLUSTER xgp0>
 
 \section{Results}
 The following results are from the weights shown in Table \ref{feature_weights}.
-These weights were derived from the instance running GA on a board with 13 rows
+These weights were derived from the genetic algorithm learner on a board with 13 rows
 at generation 132.
 
 \begin{table}[h]
@@ -175,7 +176,7 @@ while some common metrics of the 600 games can be seen on Table \ref{metric_scor
     \centering
 	\begin{tabular}{|c|c|}
 		\hline
-		\textbf{Features}   & \textbf{Weights}     \\
+		\textbf{Metrics}   & \textbf{Score}     \\
 		\hline
 		Q1 (25th Percentile)  & 6,307,657.5 \\
 		\hline
@@ -199,17 +200,68 @@ cleared. However we do see a few outliers that broke 50 million lines cleared, i
 our best run at 216,319,742 lines cleared.
 
 \section{Discussion and Findings}
+\label{discussion_n_findings}
 The choice of features used within the utility function was extremely important.
-We initially implemented our most of our original set of features without HAS\_LOST,
+We initially implemented most of our original set of features without HAS\_LOST,
 because of how well these features had worked in previous works of tetris playing
 agents, such as the Tetris applications by Colin Fahey and Pierre Dellacherie \cite{colin_fahey}.\\
 
-However, most of the features as shown above does not take the next move as a win
-or loss directly, therefore an important characteristic of the board has not been captured.
-Implementing HAS\_LOST discourages our agent from making a losing move if there are
-other moves available that will prolong the game.\\
+However, most of those features do not take in account of whether the next move will
+result in a loss, therefore an important characteristic of the board has not been captured.
+Implementing HAS\_LOST discourages our agent from making losing moves if there are
+other available non-losing moves.\\
 
-<APPEND MORE AND COMPLETE THIS SECTION!!!! THIS IS THE LAST STRETCH!!>
+With regards to the 2 instances of learners running on 9 and 13 rows respectively.
+We found that the learner on the 9x10 board has converged much faster than the
+learner on the 13x10 board. However, testing on a full sized 20x10 board with 600 games,
+the player trained on the larger board gave a higher mean score than the player
+trained on a smaller board, as can be seen in Table \ref{learner_comparison}.\\
+
+\begin{table}[h]
+	\centering
+	\begin{tabular}{|l|l|}
+		\hline
+		\textbf{Metrics}                 & \textbf{Mean Score} \\
+		\hline
+		13 Rows Learner (Generation 132) & 19,793,958.2        \\
+		\hline
+		9 Rows Learner (Generation 464)  & 12,872,842.8        \\
+		\hline
+	\end{tabular}
+	\caption{
+        Comparison of the final top weights of each learner after 9 rows learner
+        reached convergence
+	}
+	\label{learner_comparison}
+\end{table}
+
+The speed up from every generational iteration may have lead to a set of weight that
+still plays decently well, but it may not be ideal for a full sized board. We think
+that learning on a smaller game board may be specialising the player for playing on
+a smaller game board size but does not enable them to generalise to larger game board sizes.\\
+
+This illustrates the case that there exists a tradeoff between tweaking the size
+of the board (to reduce the time taken for convergence), as well as the quality of
+the weights learnt at the end, which would be another interesting area to look into
+if we had more time.
+
+\section{Further Considerations}
+
+In addition to the discussion on Section \ref{parallelisation_n_speedup},
+another possible way that we could look into speeding up the fitness evaluation
+of each chromosome is by reducing the length of each game. If the player has reached
+the maximum number of moves made or has lost, report the score. However, this may
+lead to a set of weights that are specialised in playing only up to the maximum
+number of moves and not anymore. The combination of states that the player sees may
+also be biased to the states that are closer to the start of a game, thus not
+giving an evaluation that can be generalised to a standard game. Hence how we
+tweak the maximum number of moves made would be crucial in balancing the
+time taken versus quality of weights learnt.\\
+
+Lastly, we can further parallelise the running of the genetic algorithm by distributing
+the fitness evaluation of each chromosome to separate machines in different
+clusters. This may decrease the computational time needed for each generation as the
+fitness evaluation for all chromosomes would now be running in parallel as well.
 
 \section{Conclusion}
 Our aim in this paper was to show we can use Genetic Algorithm to apply to strategies
@@ -221,13 +273,20 @@ in another algorithm in order to learn the optimal weights. One example may be L
 Square Policy Iteration by Lagoudakis and Parr \cite{lagoudakis}, of which our Tetris
 problem could be tailored to fit a control problem as stated by Lagoudakis.\\
 
-We also think that in order to design a utility based agent that could play well,
-we should not only rely optimising the weights for a set of features, but we should
-also choose good features as well. As discussed above, having a set of features
-that could better represent the state of the game results in an agent that
-could potentiall play better. Perhaps another interesting area to research would
-be looking into creating algorithms that could optimise and learn new features
-of the board state, and thus the utility function, instead of only its weights.
+We have shown that by reducing the size of the game board, we could still arrive at
+a set of weights that were decent. We have also discussed the tradeoff of reducing
+the size of the board, and the final weight's ability to generalise to larger
+board sizes. We also examined other ways to reduce the length of games and its
+possible implications on how generalisable the weights learnt at the end will be.\\
+
+We also think that in order to design a utility based agent that could play Tetris well,
+we should not only rely optimising the weights for a set of features, but we also
+need to good features as well. As discussed in Section \ref{discussion_n_findings},
+having a set of features that could better represent the state of the game results
+in an agent that could potential play better. Perhaps another interesting area
+to research would be looking into creating algorithms that could optimise and
+learn new features of the board state, and thus the utility function, instead
+of only its weights.
 
 \begin{thebibliography}{9}
     \bibitem{colin_fahey}
