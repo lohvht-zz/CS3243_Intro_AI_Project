@@ -21,21 +21,20 @@ public class PlayerSkeleton {
 	// Mean: 12,872,842.7867
 	// Highest: 70,106,597
 	// Lowest: 31,606
+	// { 
+	// 	0.27108678297658184, // INDEX_NUM_ROWS_REMOVED
+	// 	0.052210127461541356, // INDEX_MAX_HEIGHT
+	// 	-0.01175971153359219, // INDEX_AV_HEIGHT
+	// 	-9.362791850485086E-4, // INDEX_AV_DIFF_HEIGHT
+	// 	-0.22840826350913523, // INDEX_LANDING_HEIGHT
+	// 	-0.3074418797607427, // INDEX_NUM_HOLES
+	// 	-0.12518629866820255, // INDEX_COL_TRANSITION
+	// 	-0.17175759824362818, // INDEX_ROW_TRANSITION
+	// 	-0.7871385684504404, // INDEX_COVERED_GAPS
+	// 	-0.15907062512458905, // INDEX_TOTAL_WELL_DEPTH
+	// 	0.29307537483267665 // INDEX_HAS_LOST
+	// };
 	static final double[] defaultWeights =
-		// { 
-		// 	0.27108678297658184, // INDEX_NUM_ROWS_REMOVED
-		// 	0.052210127461541356, // INDEX_MAX_HEIGHT
-		// 	-0.01175971153359219, // INDEX_AV_HEIGHT
-		// 	-9.362791850485086E-4, // INDEX_AV_DIFF_HEIGHT
-		// 	-0.22840826350913523, // INDEX_LANDING_HEIGHT
-		// 	-0.3074418797607427, // INDEX_NUM_HOLES
-		// 	-0.12518629866820255, // INDEX_COL_TRANSITION
-		// 	-0.17175759824362818, // INDEX_ROW_TRANSITION
-		// 	-0.7871385684504404, // INDEX_COVERED_GAPS
-		// 	-0.15907062512458905, // INDEX_TOTAL_WELL_DEPTH
-		// 	0.29307537483267665 // INDEX_HAS_LOST
-		// };
-
 		// NEW set of weights row 13 trainer (trained with board of max 13 rows:
 		// Not converged yet at 132!:
 		// Out of 600 games
@@ -64,25 +63,6 @@ public class PlayerSkeleton {
 	NState nextState = new NState();
 	double[] featureValues = null;
 
-	//implement this function to have a working system
-	public int pickMove(State s, int[][] legalMoves) {
-		int bestMove = 0;
-		double maxValue = -Double.MAX_VALUE;
-		double currentValue = -Double.MAX_VALUE;
-
-		for(int move = 0; move < legalMoves.length; move++) {
-			nextState.copy(s);
-			nextState.makeMove(move);
-			featureValues = f.getFeatureValues(nextState);
-			currentValue = f.calculateValue(featureValues, weights);
-			if(currentValue > maxValue) {
-				maxValue = currentValue;
-				bestMove = move;
-			}
-		}
-		return bestMove;
-	}
-
 	// Use the default weight
 	PlayerSkeleton() {
 		weights = new double[defaultWeights.length];
@@ -102,18 +82,14 @@ public class PlayerSkeleton {
 	public static double playGame(double[] weights) {
 		State s = new State();
 		PlayerSkeleton p = (weights == null) ? new PlayerSkeleton() : new PlayerSkeleton(weights);
-		// Random random = new Random(System.nanoTime());
 		while (!s.hasLost()) {
 			s.makeMove(p.pickMove(s, s.legalMoves()));
-			// if (random.nextDouble() < 0.00001) {
-			// 	System.out.println("Score: " + s.getRowsCleared());
-			// }
 		}
 		return s.getRowsCleared();
 	}
 
 	/**
-	 * Plays the game until the end with the given weight vector
+	 * Plays the game until max moves reached or has lost
 	 * @param weights 	The weight vector passed in, if weight vector is null,
 	 * 					use the hardedcoded default weight
 	 * @param maxMoves	The maximum amount of moves allowed
@@ -184,35 +160,67 @@ public class PlayerSkeleton {
 		System.out.println("High score: " + highScore + " Low Score: " + lowScore);
 		return averageScore;
 	}
+
+	/**
+	 * Wrapper to play take input and play games
+	 * reads from std.in
+	 * argument1: numGames ==> number of games to play
+	 * argument2: numMoves ==> max number of moves per game
+	 * argument3: weightString ==> if "null" use default hardcoded weights,
+	 * 				else if its a string of doubles, use that as weight array
+	 */
+	public static void takeInputsAndRunGames() {
+		Scanner sc = new Scanner(System.in);
+		int numGames = sc.nextInt();
+		int numMoves = sc.nextInt();
+		String weightString = sc.nextLine();
+		double[] weights;
+		if(!weightString.equals("null")) {
+			String[] weightstringArray = weightString.split(",");
+			weights = new double[FeatureFunction.NUM_FEATURES];
+			for(int i = 0; i < weightstringArray.length; i++) {
+				weights[i] = Double.parseDouble(weightstringArray[i].trim());
+			}
+		} else {
+			weights = null;
+		}
+		if(weights != null) {
+			System.out.println("Playing Games for this set of weights: ");
+			System.out.println(Arrays.toString(weights));
+		} else {
+			System.out.println("Playing with hardcoded weights!");
+		}
+
+		long startTime = System.currentTimeMillis();
+		double score = runGames(numGames, weights, numMoves);
+		long totalTImeElapsed = (System.currentTimeMillis() - startTime)/1000;
+		System.out.println("Total time taken: "+ totalTImeElapsed+ " Average Score was: "+ score);
+		sc.close();
+	}
+
+	//implement this function to have a working system
+	public int pickMove(State s, int[][] legalMoves) {
+		int bestMove = 0;
+		double maxValue = -Double.MAX_VALUE;
+		double currentValue = -Double.MAX_VALUE;
+
+		for (int move = 0; move < legalMoves.length; move++) {
+			nextState.copy(s);
+			nextState.makeMove(move);
+			featureValues = f.getFeatureValues(nextState);
+			currentValue = f.calculateValue(featureValues, weights);
+			if (currentValue > maxValue) {
+				maxValue = currentValue;
+				bestMove = move;
+			}
+		}
+		return bestMove;
+	}
 	
 	public static void main(String[] args) {
-		// Scanner sc = new Scanner(System.in);
-		// int numGames = sc.nextInt();
-		// int numMoves = sc.nextInt();
-		// String weightString = sc.nextLine();
-		// double[] weights;
-		// if(weightString.equals("")) {
-		// 	String[] weightstringArray = weightString.split(",");
-		// 	weights = new double[FeatureFunction.NUM_FEATURES];
-		// 	for(int i = 0; i < weightstringArray.length; i++) {
-		// 		weights[i] = Double.parseDouble(weightstringArray[i].trim());
-		// 	}
-		// } else {
-		// 	weights = null;
-		// }
-		// if(weights != null) {
-		// 	System.out.println("Playing Games for this set of weights: ");
-		// 	System.out.println(Arrays.toString(weights));
-		// } else {
-		// 	System.out.println("Playing with hardcoded weights!");
-		// }
-		// int numGames = 1;
-		// int numMoves = -1;
-		// double[] weights = null;
-		// long startTime = System.currentTimeMillis();
-		// double score = runGames(numGames, weights, numMoves);
-		// long totalTImeElapsed = (System.currentTimeMillis() - startTime)/1000;
-		// System.out.println("Total time taken: "+ totalTImeElapsed+ " Average Score was: "+ score);
+		// Uncomment this and comment the original code below to let scanner
+		// take inputs
+		// takeInputsAndRunGames();
 
 		// Original Code provided
 		State s = new State();
@@ -232,6 +240,9 @@ public class PlayerSkeleton {
 	}
 }
 
+/**
+ * Features used
+ */
 class FeatureFunction {
 	private static int countFeatures = 0;
 	// Indexes of the feature array values
@@ -281,9 +292,9 @@ class FeatureFunction {
 	* MAX HEIGHT:
 	* 		Height of the tallest column
 	* TOTAL HEIGHT:
-	* 		Average height of all columns
+	* 		Total height of all columns
 	* TOTAL DIFF HEIGHT:
-	* 		Average height difference of all adjacent columns
+	* 		Total height difference of all adjacent columns
 	*/
 	public double[] getColumnFeatures(NState state) {
 		int[] top = state.getTop();
