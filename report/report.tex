@@ -18,10 +18,15 @@
 \setlength{\parindent}{0pt}
 
 \title{Growing with Big Data, A Tetris Player: Project Report by Group 22 
-\footnote{Contributions are weighed by the opacity of the author's name}}
+%\footnote{Contributions are weighed by the opacity of the author's name}
+}
 \author{\bf{Loh Han Tong, Victor} \\ A0135808B
     \and \bf{Ryan Tan Wen Jun} \\ A0135747X \and \bf {Tan Yu Wei} \\ A0142255M
-    \and \bf\transparent{0.05}{Li Jiaxin Cassandra} \\ \transparent{0.05}A0131652N
+    \and \bf
+    %\transparent{0.05}
+    {Li Jiaxin Cassandra} \\ 
+    %\transparent{0.05}
+    A0131652N
 }
 \date{\today}
 \maketitle
@@ -38,7 +43,7 @@ averaging about 19,700,000 lines cleared.
 
 \section{Strategy}
 The agent's heuristic function sums the linear weights $w(k)$ of features $\varphi_k(s)$
-(As stated in subsection \ref{features_subsection}) for a given state of the board,
+(As stated in Section \ref{features_subsection}) for a given state of the board,
 \textit{s}, where \textit{n} is the number of features as shown below:
 
 \[
@@ -73,7 +78,7 @@ evaluate each state \textit{s} based on certain characteristics of the board.\\
 \subsection{Genetic Algorithm}
 For our implementation of the genetic algorithm, Each chromosome has a weight
 vector where each gene (weight value) corresponds to one of the 11 features
-stated in subsection \ref{features_subsection}, and a fitness score.\\
+stated in Section \ref{features_subsection}, and a fitness score.\\
 
 
 The fitness score of each chromosome is defined as the mean score of playing 50
@@ -202,25 +207,26 @@ our best run at 216,319,742 lines cleared.
 \section{Discussion and Findings}
 \label{discussion_n_findings}
 Our group initially decided to use Least Square Policy Iteration (LSPI) by Lagoudakis \cite{lagoudakis},
-seeing as earlier CS3243 groups such as Tan et al \cite{shawntan} and Nguyen et al \cite{nhannguyen}
-had been able to get satisfactory results from it. However, the results that we have
-produced from our implementation of LSPI was not satisfactory, giving an average of
-at most 8,000 rows cleared.\\
+as our learning algorithm because we found that earlier CS3243 groups such as
+Tan et al \cite{shawntan} and Nguyen et al \cite{nhannguyen} had been able to get
+satisfactory results from it. However, the results that we have produced from our
+implementation of LSPI was not satisfactory, giving an average of at most 8,000 rows
+cleared.\\
 
 We speculated that there may have been an error in our implementation, but despite
-peer review, we were not able to rectify the issue. In a bid to try to improve our
+peer review, we were not able to find the issue. In an attempt to try to improve the
 learnt weights, we tried implementing other features to better represent the state
 of the board. This was when our team realised the importance of the choice of features.\\
 
 We initially implemented our original set of features without HAS\_LOST. Most of which
 was taken from previous other works of tetris playing agents, such as the Tetris
 applications by Colin Fahey and Pierre Dellacherie \cite{colin_fahey}, because of
-how well these features had worked.\\
+how well those features had worked.\\
 
-However, our original set of features do not take in account of whether the next
-move will result in a loss, therefore an important characteristic of the board has
-not been captured. Implementing HAS\_LOST discourages our agent from making losing
-moves if there are other available non-losing moves.\\
+However, those features do not take in account of whether the next move will result
+in a loss, therefore an important characteristic of the board has not been captured.
+Implementing HAS\_LOST will discourages our agent from making losing moves if
+there are other available non-losing moves.\\
 
 After implementing this feature, the number of rows cleared on the average increased
 from 8,000 to 80,000. Nonetheless, the results were still unsatisfactory and the team
