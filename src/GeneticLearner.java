@@ -6,24 +6,9 @@ import java.io.FileWriter;
 
 public class GeneticLearner {
     public static void runGeneticAlgorithm() {
-        double[] heuristicWeights =
-        {
-            0.00134246, // INDEX_NUM_ROWS_REMOVED
-            -0.01414993, // INDEX_MAX_HEIGHT
-            -0.00659672, // INDEX_AV_HEIGHT
-            0.00140868, // INDEX_AV_DIFF_HEIGHT
-            -0.02396361, // INDEX_LANDING_HEIGHT
-            -0.03055654, // INDEX_NUM_HOLES
-            -0.06026152, // INDEX_COL_TRANSITION
-            -0.02105507, // INDEX_ROW_TRANSITION
-            -0.0340038, // INDEX_COVERED_GAPS
-            -0.0117935, // INDEX_TOTAL_WELL_DEPTH
-            1.00, // INDEX_HAS_LOST, after implementing this, score went up by a significant amount
-        };
 
         int populationSize = 1000;
         double percentOfParents = 0.4;
-        double percentOfElites = 0.005;
         double percentOfOffsprings = 0.4;
         double percentOfCrossover = 0.8;
         double percentOfMutation = 0.08;
@@ -34,12 +19,10 @@ public class GeneticLearner {
         Population population = new Population(
             populationSize,
             percentOfParents,
-            // percentOfElites,
             percentOfOffsprings,
             percentOfCrossover,
             percentOfMutation,
             convergenceCount,
-            // heuristicWeights,
             populationName
         );
         // Initial Report!
@@ -180,8 +163,6 @@ class Population {
     private final int populationSize;
     // percentage of the population to be considered as candidates for parents to the next gene
     private final double percentageOfParents;
-    // percentage of the population to be kept as the elites
-    // private final double percentageOfElites;
     // percentage of offsprings per generation
     private final double percentageOfOffsprings;
     // chance of crossing over
@@ -198,13 +179,10 @@ class Population {
     public Population(
         int _populationSize,
         double _percentageOfParents,
-        // double _percentageOfElites,
         double _percentageOfOffsprings,
         double _percentageCrossOver,
         double _percentageMutation,
         int _convergenceCount,
-        // Inserts heuristic weights as elites, if the aren't null at the start
-        // double[] _heuristicWeights,
         String _populationName
     ) {
         generationCount = 0;
@@ -213,7 +191,6 @@ class Population {
 
         populationSize = _populationSize;
         percentageOfParents = _percentageOfParents;
-        // percentageOfElites = _percentageOfElites;
         percentageOfOffsprings = _percentageOfOffsprings;
         percentageCrossOver = _percentageCrossOver;
         percentageMutation = _percentageMutation;
@@ -221,15 +198,6 @@ class Population {
         populationName = _populationName;
 
         populationPool = new ArrayList<>(populationSize);
-        // if(_heuristicWeights != null) {
-        //     int numberOfElites = (int) (populationSize * percentageOfElites);
-        //     for(int i = 0; i < numberOfElites; i++) {
-        //         Chromosome elite = new Chromosome(_heuristicWeights, percentageMutation);
-        //         elite.mutate();
-        //         populationPool.add(elite);
-        //     }
-        // }
-
         while(populationPool.size() < populationSize) {
             populationPool.add(new Chromosome(FeatureFunction.NUM_FEATURES, percentageMutation));
         }
