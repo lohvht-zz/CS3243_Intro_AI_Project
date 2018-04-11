@@ -17,16 +17,22 @@
 % remove all indents from new paragraphs
 \setlength{\parindent}{0pt}
 
-\title{Growing with Big Data, A Tetris Player: Project Report by Group 22 
-%\footnote{Contributions are weighed by the opacity of the author's name}
+\title{
+    Growing A Tetris Player with Big Data\\
+    \large Project Report by Group 22
 }
-\author{\bf{Loh Han Tong, Victor} \\ A0135808B
-    \and \bf{Ryan Tan Wen Jun} \\ A0135747X \and \bf {Tan Yu Wei} \\ A0142255M
-    \and \bf
-    %\transparent{0.05}
-    {Li Jiaxin Cassandra} \\ 
-    %\transparent{0.05}
+\author{
+    \bf{Li Jiaxin Cassandra}\\ 
     A0131652N
+    \and
+    \bf{Loh Han Tong, Victor}\\
+    A0135808B
+    \and
+    \bf{Ryan Tan Wen Jun}\\
+    A0135747X
+    \and
+    \bf{Tan Yu Wei}\\
+    A0142255M
 }
 \date{\today}
 \maketitle
@@ -84,22 +90,24 @@ stated in Section \ref{features_subsection}, and a fitness score.\\
 The fitness score of each chromosome is defined as the mean score of playing 50
 games using that individual's chromosome weight.\\
 
-This is our implementation of the genetic algorithm:
+This is a simple summary of our implementation of the genetic algorithm:
 \begin{enumerate}
-    \item Start out with 1000 individuals with random weights. Initially calculate
-    their fitness score.
+    \item Start out with 1000 individuals with random weights, let this be the population pool.
+    Calculate the fitness score of all of the individuals in the population.
     \item Select 40\% of population via Stochastic Universal Sampling to be
-            potential parents
-    \item Generate 40\% of population as offspring by the process below:
+            potential parents, let this be the parent pool.
+    \item Generate 40\% of population as offsprings and put them into an offspring pool
+    by the process below:
         \begin{enumerate}
-            \item Randomly select 2 parents from the pool generated above
+            \item Randomly select 2 parents from the parent pool generated above
             \item Crossover with 80\% chance, by taking weighted average of genes
             \item Mutate these 2 offsprings with 8\% chance by adding 1/10 times
                 the random gaussian value.
-            \item calculate fitness score for the 2 offsprings
-            \item Add to offspring pool
+            \item Calculate fitness score for the 2 offsprings
+            \item Add these 2 offsprings to offspring pool
         \end{enumerate}
-    \item Cull bottom 40\% and replace with offsprings in offspring pool
+    \item Cull the bottom 40\% of the population pool and replace with offsprings
+    in offspring pool
     \item Repeat steps 2 to 4 for each generation, till convergence
 \end{enumerate}
 
