@@ -45,7 +45,13 @@ function to estimate the utility of each state.\\
 In this report, we discuss how this agent was designed and the features used to
 evaluate the utility of the board. We will also look at how we have implemented
 and used genetic algorithm to train a tetris agent that could play Tetris decently well,
-averaging about 19,700,000 lines cleared.
+averaging about 19,700,000 lines cleared. 
+% TODO: Other things we can elaborate further: ==> Refer to the sections of report!
+% In this report, we discuss the design and strategies used in the agent, and how we got
+% agents with better strategies through Genetic Algorithms (Section 2.1, 2.2)
+% we will then look at how we have tackled speeding up gameplays (Section 2.3)
+% results of how well our learnt agent performs in a standard game (Section 3)
+% etc etc
 
 \section{Strategy}
 The agent's heuristic function sums the linear weights $w(k)$ of features $\varphi_k(s)$
@@ -56,8 +62,8 @@ The agent's heuristic function sums the linear weights $w(k)$ of features $\varp
     \hat V(s) = \sum_{k=0}^{n}w(k)\varphi_k(s)
 \]
 
-Where at every turn, the agent evaluates, among all possible moves using the
-heuristic function, the move that gives the best utility.
+Where at every turn, the agent evaluates all possible moves and makes the move
+that gives the best utility.
 
 \subsection{Features Selected}
 \label{features_subsection}
@@ -80,6 +86,15 @@ evaluate each state \textit{s} based on certain characteristics of the board.\\
     \item \textbf{HAS\_LOST} -- Gives a penalty of -10000 if move result in loss,
         else give 100
 \end{itemize}
+
+Intuitively, the weight vector can be thought of as the agent's strategy on
+the board, based on the features it sees. For example, if the agent has a weight
+vector that gives a high positive weight value to TOTAL\_DIFF\_HEIGHT, it will have
+a general strategy to always prefer moves that increases the overal "bumpiness" of
+the tetris wall.\\
+
+This gives us a clear way in interpreting the values from the weight vector and how
+it corresponds to the overall strategy of the agent.
 
 \subsection{Genetic Algorithm}
 For our implementation of the genetic algorithm, Each chromosome has a weight
@@ -133,7 +148,7 @@ Another way that we have tried speeding up the learning algorithm was to reduce
 the size of the board by reducing its height. Our team ran 2 different learners,
 one learning on a 9x10 board, while the other learning on a 13x10 board.
 The learner with 9 rows, even at later generations, took an average of 30 minutes
-per generation, while the latter, took an average of 4 hours per generation.\\
+per generation, while the latter, took an average of 1.75 hours per generation.\\
 
 The machine used for the training and learning the weights, and running all the
 above tests was SoC compute node xgbp0, it has the following specifications:\\
