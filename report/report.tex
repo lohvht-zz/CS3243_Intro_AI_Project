@@ -15,7 +15,7 @@
 
 \begin{document}
 % remove all indents from new paragraphs
-\setlength{\parindent}{0pt}
+% \setlength{\parindent}{0pt}
 
 \title{
     Growing A Tetris Player with Big Data\\
@@ -40,12 +40,19 @@
 \section{Introduction}
 The purpose of this project is to create a utility based agent to maximise the
 number of rows removed in a game of Tetris. This tetris playing agent uses a heuristic
-function to estimate the utility of each state.\\
+function to estimate the utility of each state.
 
-In this report, we discuss how this agent was designed and the features used to
-evaluate the utility of the board. We will also look at how we have implemented
-and used genetic algorithm to train a tetris agent that could play Tetris decently well,
-averaging about 19,700,000 lines cleared. 
+% In this report, we discuss how this agent was designed and the features used to
+% evaluate the utility of the board. We will also look at how we have implemented
+% and used genetic algorithm to train a tetris agent that could play Tetris decently well,
+% averaging about 19,700,000 lines cleared. 
+In this report, we discuss the design and strategies used in the agent, and how we got
+agents to learn better strategies through Genetic Algorithm (Section \ref{features_subsection}, \ref{genetic}).
+We will then look at how we have tackled speeding up gameplays (Section 2.3) and the
+results of how well our learnt agent performs in a standard game (Section 3). Lastly,
+we discuss our result and other possible extensions that we can do to make the reduce
+the time needed for the algorithm to converge.
+
 % TODO: Other things we can elaborate further: ==> Refer to the sections of report!
 % In this report, we discuss the design and strategies used in the agent, and how we got
 % agents with better strategies through Genetic Algorithms (Section 2.1, 2.2)
@@ -70,14 +77,14 @@ that gives the best utility.
 \subsection{Features Selected}
 \label{features_subsection}
 This is the list of 11 features that we have selected. They allow us to
-evaluate each state \textit{s} based on certain characteristics of the board.\\
+evaluate each state \textit{s} based on certain characteristics of the board.
 
 \begin{itemize}
-    \item \textbf{NUM\_ROWS\_REMOVED} -- Number of rows removed
-    \item \textbf{MAX\_HEIGHT}
-    \item \textbf{TOTAL\_HEIGHT}
+    \item \textbf{NUM\_ROWS\_REMOVED} -- Number of rows removed after each action
+    \item \textbf{MAX\_HEIGHT} -- Height of the tallest column
+    \item \textbf{TOTAL\_HEIGHT} -- Sum of all column heights
     \item \textbf{TOTAL\_DIFF\_HEIGHT} -- Sum of all difference in height of all columns
-    \item \textbf{LANDING\_HEIGHT} -- Height of where the next piece lands
+    \item \textbf{LANDING\_HEIGHT} -- Height of where the lowest point of next piece lands
     \item \textbf{NUM\_HOLES} -- Number of empty cells with at least one filled cell above
     \item \textbf{COL\_TRANSITION} -- Number of filled cells adjacent to empty cells,
         summed over all columns
@@ -93,19 +100,20 @@ Intuitively, the weight vector can be thought of as the agent's strategy on
 the board, based on the features it sees. For example, if the agent has a weight
 vector that gives a high positive weight value to TOTAL\_DIFF\_HEIGHT, it will have
 a general strategy to always prefer moves that increases the overal "bumpiness" of
-the tetris wall.\\
+the tetris wall.
 
 This gives us a clear way in interpreting the values from the weight vector and how
 it corresponds to the overall strategy of the agent.
 
 \subsection{Genetic Algorithm}
+\label{genetic}
 For our implementation of the genetic algorithm, Each chromosome has a weight
 vector where each gene (weight value) corresponds to one of the 11 features
-stated in Section \ref{features_subsection}, and a fitness score.\\
+stated in Section \ref{features_subsection}, and a fitness score.
 
 
 The fitness score of each chromosome is defined as the mean score of playing 50
-games using that individual's chromosome weight.\\
+games using that individual's chromosome weight.
 
 This is a simple summary of our implementation of the genetic algorithm:
 \begin{enumerate}
@@ -135,7 +143,7 @@ If this score has not improved for 50 generations, we terminate the algortihm.
 \label{parallelisation_n_speedup}
 Each generation of the algorithm required running games to evaluate fitness. This
 meant that as the weights progressively got better, each generation started
-taking a longer time to evaulate.\\
+taking a longer time to evaulate.
 
 We decided to parallelise the games by running each game on its own thread. Playing
 100 games each, with a set of decent set of weights
@@ -144,50 +152,74 @@ We decided to parallelise the games by running each game on its own thread. Play
     played over 200 games in total, 100 games sequentially and 100 games in parallel, with a total average score of 841279
 }
 , the time taken for the parallelised version was 2059 seconds while the
-sequential version was 6897, giving a speedup of 3.34 times.\\
+sequential version was 6897, giving a speedup of 3.34 times.
 
 Another way that we have tried speeding up the learning algorithm was to reduce
 the size of the board by reducing its height. Our team ran 2 different learners,
 one learning on a 9x10 board, while the other learning on a 13x10 board.
 The learner with 9 rows, even at later generations, took an average of 30 minutes
-per generation, while the latter, took an average of 1.75 hours per generation.\\
+per generation, while the latter, took an average of 1.75 hours per generation.
 
 The machine used for the training and learning the weights, and running all the
-above tests was SoC compute node xgbp0, it has the following specifications:\\
+above tests was SoC compute node xgbp0, it has the following specifications:
 
 2x Intel Xeon Processor E5-2620 v4, 64GB DDR4 RAM, 1x Nvidia Tesla P4 GPU.
 
 \section{Results}
-The following results are from the weights shown in Table \ref{feature_weights}.
+
+Figures \ref{score_9rows} and \ref{score_13rows} shows the fitness scores of
+the Genetic Algorithm. As can be seen from these graphs, the fitness scores for both
+tends to plateau at around generation 100, and with the learner in 9 rows converging at generation 464.
+We can see that the highest score improves less and less as the generations increases.
+This shows that the algorithm is reaching a maxima.
+
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.5]{9rows_converge.png}
+    \caption{Fitness scores from learner at 9 rows}
+    \label{score_9rows}
+\end{figure}
+
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[scale=0.5]{13rows_converge.png}
+    \caption{Fitness scores from learner at 13 rows}
+    \label{score_13rows}
+\end{figure}
+
+Figure \ref{score_histogram} are from the weights shown in Table \ref{feature_weights}.
 These weights were derived from the genetic algorithm learner on a board with 13 rows
-at generation 132.\\
+at generation 132. These were the best set of weights in terms of fitness score from the 13 row learner at the time
+the 9 row learner reached convergence at generation 464. 
 
 \begin{table}[h]
     \begin{tabular}{|l|l|}
         \hline
         \textbf{Features}   & \textbf{Weights}     \\
         \hline
-        NUM\_ROWS\_REMOVED  & -0.10994115458466136 \\
+        NUM\_ROWS\_REMOVED  & -0.109941154 \\
         \hline
-        MAX\_HEIGHT         & -0.1154697834187254  \\
+        MAX\_HEIGHT         & -0.115469783  \\
         \hline
-        TOTAL\_HEIGHT       & -0.04390525258236673 \\
+        TOTAL\_HEIGHT       & -0.043905252 \\
         \hline
-        TOTAL\_DIFF\_HEIGHT & 0.017912908135268947 \\
+        TOTAL\_DIFF\_HEIGHT & 0.0179129081 \\
         \hline
-        LANDING\_HEIGHT     & -0.3044476707923254  \\
+        LANDING\_HEIGHT     & -0.304447670  \\
         \hline
-        NUM\_HOLES          & -0.38617473506172584 \\
+        NUM\_HOLES          & -0.386174735 \\
         \hline
-        COL\_TRANSITION     & -0.12518629866820255 \\
+        COL\_TRANSITION     & -0.125186298 \\
         \hline
-        ROW\_TRANSITION     & -0.22806177833393343 \\
+        ROW\_TRANSITION     & -0.228061778 \\
         \hline
-        COVERED\_GAPS       & -0.7696058904564755  \\
+        COVERED\_GAPS       & -0.769605890  \\
         \hline
-        TOTAL\_WELL\_DEPTH  & -0.19377750577164388 \\
+        TOTAL\_WELL\_DEPTH  & -0.193777505 \\
         \hline
-        HAS\_LOST           & 0.13672271498097804  \\
+        HAS\_LOST           & 0.1367227149  \\
         \hline
     \end{tabular}
     \caption{Respective Weights for Features}
@@ -195,7 +227,7 @@ at generation 132.\\
 \end{table}
 
 The result of running 600 games can be seen in Figure \ref{score_histogram},
-while some common metrics of the 600 games can be seen on Table \ref{metric_scores}.\\
+while some common metrics of the 600 games can be seen on Table \ref{metric_scores}.
 
 \begin{figure}[h]
     \centering
@@ -238,27 +270,27 @@ as our learning algorithm because we found that earlier CS3243 groups such as
 Tan et al \cite{shawntan} and Nguyen et al \cite{nhannguyen} had been able to get
 satisfactory results from it. However, the results that we have produced from our
 implementation of LSPI was not satisfactory, giving an average of at most 8,000 rows
-cleared.\\
+cleared.
 
 We speculated that there may have been an error in our implementation, but despite
 peer review, we were not able to find the issue. In an attempt to try to improve the
 learnt weights, we tried implementing other features to better represent the state
-of the board. This was when our team realised the importance of the choice of features.\\
+of the board. This was when our team realised the importance of the choice of features.
 
 We initially implemented our original set of features without HAS\_LOST. Most of which
 was taken from previous other works of tetris playing agents, such as the Tetris
 applications by Colin Fahey and Pierre Dellacherie \cite{colin_fahey}, because of
-how well those features had worked.\\
+how well those features had worked.
 
 However, those features do not take in account of whether the next move will result
 in a loss, therefore an important characteristic of the board has not been captured.
 Implementing HAS\_LOST will discourages our agent from making losing moves if
-there are other available non-losing moves.\\
+there are other available non-losing moves.
 
 After implementing this feature, the number of rows cleared on the average increased
 from 8,000 to 80,000. Nonetheless, the results were still unsatisfactory and the team
 decided to change the implementation of the learner to use our own version of genetic
-algorithm instead.\\
+algorithm instead.
 
 \begin{table}[h]
 	\centering
@@ -282,12 +314,12 @@ With regards to the 2 instances of learners running on 9 and 13 rows respectivel
 We found that the learner on the 9x10 board has converged much faster than the
 learner on the 13x10 board. However, testing on a full sized 20x10 board with 600 games,
 the player trained on the larger board gave a higher mean score than the player
-trained on a smaller board, as can be seen in Table \ref{learner_comparison}.\\
+trained on a smaller board, as can be seen in Table \ref{learner_comparison}.
 
 The apparent tradeoff for this speed up in convergence, is that the set of weights
 obtained are not ideal for a full sized board, though the player still plays well.
 We think that learning on a smaller game board may be specialising the player for playing on
-a smaller game board size but does not enable them to generalise to larger game board sizes.\\
+a smaller game board size but does not enable them to generalise to larger game board sizes.
 
 This illustrates the tradeoff between tweaking the size of the board (to
 reduce the time taken for convergence), as well as the quality of the weights
@@ -305,7 +337,7 @@ number of moves and not anymore. The combination of states that the player sees 
 also be biased to the states that are closer to the start of a game, thus not
 giving an evaluation that can be generalised to a standard game. Hence how we
 tweak the maximum number of moves made would be crucial in balancing the
-time taken versus quality of weights learnt.\\
+time taken versus quality of weights learnt.
 
 Lastly, we can further parallelise the running of the genetic algorithm by distributing
 the fitness evaluation of each chromosome to separate machines in different
@@ -314,19 +346,26 @@ fitness evaluation for all chromosomes would now be running in parallel in diffe
 machines.
 
 \section{Conclusion}
-Our aim in this paper was to show we can use Genetic Algorithm to apply to strategies
-in terms of weights to our feature-based utility function to evaluate the best moves.
-We have showed that the algorithm could settle at a good set of weights, despite
-not having a guarantee that each consecutive generation would improve. The set of weights
-that we have derived based on these features could then be used in as a starting point
-in another algorithm in order to learn the optimal weights, such as LSPI, of which our
-Tetris problem could be be tailored to fit a control problem as stated by Lagoudakis \cite{lagoudakis}.\\
+In this paper, we used Genetic Algorithm to arrive at a strategy for a utility based
+agent that could play Tetris well. This strategy derived could then be used as good
+starting point in another algorithm such as LSPI, in order to learn the optimal weights,
+as our Tetris problem could be tailed to fit a control problem as stated by Lagoudakis \cite{lagoudakis}.
 
-We have shown that by reducing the size of the game board, we could still arrive at
-a set of weights that were decent. We discussed the tradeoff of reducing
-the size of the board, and the final weight's ability to generalise to larger
-board sizes. We also examined other ways to reduce the length of games and its
-possible implications on how generalisable the weights learnt at the end will be.\\
+We also looked at different methods of making the algorithm learn a good strategy faster,
+such as reducing the size of the board, and its various tradeoffs.
+% Our aim in this paper was to show we can use Genetic Algorithm to apply to strategies
+% in terms of weights to our feature-based utility function to evaluate the best moves.
+% We have showed that the algorithm could settle at a good set of weights, despite
+% not having a guarantee that each consecutive generation would improve. The set of weights
+% that we have derived based on these features could then be used in as a starting point
+% in another algorithm in order to learn the optimal weights, such as LSPI, of which our
+% Tetris problem could be be tailored to fit a control problem as stated by Lagoudakis \cite{lagoudakis}.
+
+% We have shown that by reducing the size of the game board, we could still arrive at
+% a set of weights that were decent. We discussed the tradeoff of reducing
+% the size of the board, and the final weight's ability to generalise to larger
+% board sizes. We also examined other ways to reduce the length of games and its
+% possible implications on how generalisable the weights learnt at the end will be.
 
 As a final concluding point, we think that in order to design a utility based agent
 that could play Tetris well, we should not rely on only optimising the weights
@@ -335,7 +374,7 @@ As discussed in Section \ref{discussion_n_findings}, having a set of features th
 could better represent the state of the game, results in an agent that plays better.
 Perhaps another interesting area to research would be looking into creating algorithms
 that could optimise and learn new features of the board state, and thus the utility
-function, instead of just optimising its weights.\\
+function, instead of just optimising its weights.
 
 \begin{thebibliography}{9}
     \bibitem{shawntan}
