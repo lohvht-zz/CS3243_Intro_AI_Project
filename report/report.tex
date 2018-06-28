@@ -57,8 +57,8 @@ Algorithm (Section \ref{features_subsection}, \ref{genetic}).
 Next, we look at how we have tackled speeding up gameplay (Section \ref{parallelisation_n_speedup}) through
 modifying the Tetris game board, in place of the more common approach of using a
 max number of moves. 
-Lastly, we review the results of our learnt agent's performance in a standard game (Section 3).
-and discuss our findings and other possible extensions.
+Lastly, we review the results of our learnt agent's performance in a standard game (Section \ref{results}),
+and discuss our findings and other possible extensions (Section \ref{discussion_n_findings}, \ref{future_considerations}).
 
 % TODO: Other things we can elaborate further: ==> Refer to the sections of report!
 % In this report, we discuss the design and strategies used in the agent, and how we got
@@ -185,6 +185,7 @@ above tests was SoC compute node xgbp0, it has the following specifications:
 \end{itemize}
 
 \section{Results}
+\label{results}
 
 Figures \ref{score_9rows} and \ref{score_13rows} shows the both instances of the
 genetic algorithm we ran. As can be seen from these graphs, the fitness scores
@@ -348,8 +349,8 @@ reduce the time taken for convergence), as well as the quality of the weights
 learnt at the end, which would be another interesting area to look into if we had
 more time.
 
-\section{Further Considerations}
-
+\section{Future Considerations}
+\label{future_considerations}
 In addition to the discussion on Section \ref{parallelisation_n_speedup},
 another possible way that we could look into speeding up the fitness evaluation
 of each chromosome is by reducing the length of each game. If the player has reached
